@@ -1,15 +1,13 @@
-# AI City — BurgerPiz Viewer
+# AI City
 
-A React + Three.js app that loads and renders the `BurgerPiz.glb` 3D map with
-proper PBR lighting, HDRI environments, and runtime controls.
+A browser-based **BurgerPiz** map viewer with a lightweight **city simulation**: NPCs, a **town layout editor** (markers persisted in `localStorage`), **dialogue** (stub lines plus optional **Ollama** LLM), and a **VRM** character (Luna) in the scene. The world uses **React Three Fiber**, PBR lighting, HDRI-style environments, and a custom **night sky** shader.
 
-Built with:
+## Stack
 
-- **Vite** + **React 18** + **TypeScript** (strict)
-- **react-three-fiber** — declarative Three.js in React
-- **@react-three/drei** — `useGLTF`, `OrbitControls`, `Environment`,
-  `ContactShadows`, `useProgress`
-- **leva** — live debug panel (lighting / exposure / environment)
+- **Vite** + **React 18** + **TypeScript**
+- **react-three-fiber** / **@react-three/drei** — scene graph, GLTF/VRM, controls, environment
+- **@pixiv/three-vrm** — VRM avatars
+- **leva** — debug / tuning panels where used
 
 ## Getting started
 
@@ -18,7 +16,26 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173.
+Open [http://localhost:5173](http://localhost:5173).
+
+| Script        | Description                    |
+| ------------- | ------------------------------ |
+| `npm run dev` | Dev server (port 5173)         |
+| `npm run build` | Production build + typecheck |
+| `npm run preview` | Preview production build   |
+| `npm run typecheck` | `tsc` only, no emit      |
+
+## Optional: Ollama (NPC dialogue)
+
+The dev server proxies **`/ollama` → `http://127.0.0.1:11434`** so the browser can call Ollama without CORS issues. Install [Ollama](https://ollama.com/), pull a model (e.g. `llama3.2`), then run `ollama serve` as usual.
+
+Environment variables (optional, `.env` / `.env.local` — see `.gitignore`):
+
+| Variable | Purpose |
+| -------- | ------- |
+| `VITE_OLLAMA_BASE` | Override API base; default is `/ollama` (proxy). |
+| `VITE_OLLAMA_MODEL` | Model name; default `llama3.2`. |
+| `VITE_OLLAMA_ENABLED` | Set to `false` to skip Ollama and use stub dialogue only. |
 
 ## Project layout
 
@@ -26,39 +43,27 @@ Open http://localhost:5173.
 AI city/
 ├── public/
 │   └── models/
-│       └── BurgerPiz.glb       # copied from BurgerPiz/BurgerPiz/Models
+│       ├── BurgerPiz.glb
+│       └── npc/
+│           └── Luna.vrm
 ├── src/
-│   ├── scene/
-│   │   ├── Scene.tsx           # Canvas, camera, controls, env, toneMapping
-│   │   ├── BurgerPizModel.tsx  # GLTF loader, auto-center, auto-frame camera
-│   │   ├── Lighting.tsx        # key / fill / rim, shadow cam tuned
-│   │   └── Ground.tsx          # contact shadow catcher
-│   ├── ui/
-│   │   ├── LoadingOverlay.tsx  # progress bar driven by useProgress
-│   │   ├── TopBar.tsx
-│   │   └── ControlsHint.tsx
+│   ├── scene/                 # Canvas, map, lighting, ground, walk controls, night sky
+│   ├── systems/citySim/       # Sim loop, entities, dialogue, town layout, LLM hooks
 │   ├── App.tsx
 │   ├── main.tsx
 │   └── index.css
+├── vite.config.ts             # dev proxy for /ollama
 ├── index.html
-├── vite.config.ts
-├── tsconfig.json
 └── package.json
 ```
 
+**Town layout** is stored under the key `ai-city-town-layout-v1` in `localStorage` (see `townLayout/storage.ts`).
+
 ## Design notes
 
-- **Format.** Only `BurgerPiz.glb` is bundled — GLB is the right web format
-  (smaller, standardized, textures embedded). The `.fbx` / `.dae` copies in
-  the source folder are intentionally excluded.
-- **Auto-framing.** On load the model's bounding box is measured; the model
-  is re-centered and sunk to `y = 0`, and the camera is placed at a distance
-  derived from the FOV so the map always fits in view.
-- **Rendering.** `ACESFilmicToneMapping` + `SRGB` output, HDRI environment
-  via drei's `Environment` preset (switchable in the Leva panel), soft
-  `ContactShadows` and a tuned directional shadow camera.
-- **Performance.** `AdaptiveDpr` + `AdaptiveEvents` + `PerformanceMonitor`
-  downscale gracefully on weaker GPUs. `Preload all` warms caches.
+- **GLB** is the shipped map format; the viewer auto-centers the map and frames the camera from bounds.
+- **Rendering:** tone-mapped output, environment lighting, contact shadows, adaptive DPR/events where configured in scene code.
+- **Dialogue:** structured conversation flow can use **Web Speech** for TTS when the browser supports it; LLM path goes through the Ollama client when enabled.
 
 ## Build
 
@@ -66,3 +71,7 @@ AI city/
 npm run build
 npm run preview
 ```
+
+## License
+
+Private project (`"private": true` in `package.json`). Adjust if you open-source the repo.
