@@ -1,5 +1,7 @@
 # AI City
 
+**Repository:** [github.com/seed0001/AI-City](https://github.com/seed0001/AI-City)
+
 A browser-based **BurgerPiz** map viewer with a lightweight **city simulation**: NPCs, a **town layout editor** (markers persisted in `localStorage`), **dialogue** (stub lines plus optional **Ollama** LLM), and a **VRM** character (Luna) in the scene. The world uses **React Three Fiber**, PBR lighting, HDRI-style environments, and a custom **night sky** shader.
 
 ## Stack
@@ -7,7 +9,12 @@ A browser-based **BurgerPiz** map viewer with a lightweight **city simulation**:
 - **Vite** + **React 18** + **TypeScript**
 - **react-three-fiber** / **@react-three/drei** — scene graph, GLTF/VRM, controls, environment
 - **@pixiv/three-vrm** — VRM avatars
-- **leva** — debug / tuning panels where used
+- **leva** — in `package.json` for optional future panels (not wired in the current UI)
+
+## Requirements
+
+- **Node.js** 18+ (recommended for Vite 5)
+- **npm** (or another client compatible with `package-lock.json`)
 
 ## Getting started
 
@@ -16,24 +23,33 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173). The dev server is configured with `host: true`, so you can also open the app from another device on your LAN using your machine’s local IP and port **5173**.
 
-| Script        | Description                    |
-| ------------- | ------------------------------ |
-| `npm run dev` | Dev server (port 5173)         |
+| Script | Description |
+| ------ | ----------- |
+| `npm run dev` | Dev server (port 5173) |
 | `npm run build` | Production build + typecheck |
-| `npm run preview` | Preview production build   |
-| `npm run typecheck` | `tsc` only, no emit      |
+| `npm run preview` | Preview production build |
+| `npm run typecheck` | `tsc` only, no emit |
+
+## Using the app
+
+- **Left column:** **Town layout** (top) — switch between *Layout (staging)* and *Simulation*, place preset markers, save, and relaunch the sim. **Dialogue** (bottom) — in-world chat / TTS when enabled.
+- **First-person walk:** Click the **3D view** to capture the pointer (**pointer lock**). Move with **W A S D**, hold **Shift** to move faster. Walk controls activate after the map bounds are known.
+- **Layout mode:** With a marker selected, **Delete** or **Backspace** removes it (when focus is not in a text field).
+- **Debug:** The **City sim** panel (top-right) shows live engine state (entities, tick, etc.).
 
 ## Optional: Ollama (NPC dialogue)
 
 The dev server proxies **`/ollama` → `http://127.0.0.1:11434`** so the browser can call Ollama without CORS issues. Install [Ollama](https://ollama.com/), pull a model (e.g. `llama3.2`), then run `ollama serve` as usual.
 
+For **production**, you must either expose Ollama with CORS configured, host your own API, or set `VITE_OLLAMA_BASE` to a reachable URL — the Vite proxy only applies during `npm run dev`.
+
 Environment variables (optional, `.env` / `.env.local` — see `.gitignore`):
 
 | Variable | Purpose |
 | -------- | ------- |
-| `VITE_OLLAMA_BASE` | Override API base; default is `/ollama` (proxy). |
+| `VITE_OLLAMA_BASE` | Override API base; default is `/ollama` (proxy in dev). |
 | `VITE_OLLAMA_MODEL` | Model name; default `llama3.2`. |
 | `VITE_OLLAMA_ENABLED` | Set to `false` to skip Ollama and use stub dialogue only. |
 
