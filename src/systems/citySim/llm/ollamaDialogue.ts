@@ -7,6 +7,7 @@ import type { NpcConversationScenePacket, StructuredNpcExchangeResult } from "..
 import type { PlayerNpcReplyResult, PlayerNpcScenePacket } from "../conversationPlayer";
 import { ollamaChat } from "./ollamaClient";
 import { isOllamaDialogueEnabled } from "./ollamaConfig";
+import { withSystemSuffix } from "../settings/aiSimSettings";
 
 function extractJsonValue(text: string): unknown {
   const trimmed = text.trim();
@@ -113,7 +114,7 @@ export async function fetchNpcNpcExchange(
   try {
     const content = await ollamaChat({
       messages: [
-        { role: "system", content: NPC_SYSTEM },
+        { role: "system", content: withSystemSuffix(NPC_SYSTEM, "npc") },
         { role: "user", content: npcUserPayload(packet) },
       ],
       formatJson: true,
@@ -163,7 +164,7 @@ export async function fetchPlayerNpcReply(
   try {
     const content = await ollamaChat({
       messages: [
-        { role: "system", content: PLAYER_SYSTEM },
+        { role: "system", content: withSystemSuffix(PLAYER_SYSTEM, "player") },
         {
           role: "user",
           content: `Input:\n${JSON.stringify(packet, null, 2)}\n\nReturn JSON: { "npcLine": string, "tone": "warm"|"neutral"|"sharp", "trustDelta": number, "tensionDelta": number, "memorySummary": string }`,

@@ -9,6 +9,7 @@
 import type { MemorySystem } from "./MemorySystem";
 import type { LocationRegistry } from "./LocationRegistry";
 import type { Mood, TownEntity } from "./types";
+import { getMergedAgentSlice } from "./settings/aiSimSettings";
 import { ensureRelationship, applyConversationOutcome } from "./SocialSystem";
 import type { FollowUpAction } from "./types";
 
@@ -28,6 +29,8 @@ export type NpcConversationScenePacket = {
     goal: string;
     relationshipToB: string;
     recentMemorySummaries: string[];
+    /** Optional scene-painting / speaking-style notes from user settings. */
+    personaNotes?: string;
   };
   agentB: {
     id: string;
@@ -38,6 +41,7 @@ export type NpcConversationScenePacket = {
     goal: string;
     relationshipToA: string;
     recentMemorySummaries: string[];
+    personaNotes?: string;
   };
   conversationState: {
     turnNumber: number;
@@ -110,6 +114,8 @@ export function buildNpcConversationScenePacket(
   const rb = ensureRelationship(b, a.id);
   const memA = memories.recentFor(a, 3).map((m) => m.summary);
   const memB = memories.recentFor(b, 3).map((m) => m.summary);
+  const pa = getMergedAgentSlice(a);
+  const pb = getMergedAgentSlice(b);
 
   return {
     scene: {
@@ -119,23 +125,25 @@ export function buildNpcConversationScenePacket(
     },
     agentA: {
       id: a.id,
-      displayName: a.displayName,
-      role: a.role,
-      traits: [...a.traits],
-      mood: a.mood,
+      displayName: pa.displayName,
+      role: pa.role,
+      traits: [...pa.traits],
+      mood: pa.mood,
       goal: a.currentGoal,
       relationshipToB: `trust ${ra.trust.toFixed(2)}, tension ${ra.tension.toFixed(2)}`,
       recentMemorySummaries: memA,
+      ...(pa.personaNotes ? { personaNotes: pa.personaNotes } : {}),
     },
     agentB: {
       id: b.id,
-      displayName: b.displayName,
-      role: b.role,
-      traits: [...b.traits],
-      mood: b.mood,
+      displayName: pb.displayName,
+      role: pb.role,
+      traits: [...pb.traits],
+      mood: pb.mood,
       goal: b.currentGoal,
       relationshipToA: `trust ${rb.trust.toFixed(2)}, tension ${rb.tension.toFixed(2)}`,
       recentMemorySummaries: memB,
+      ...(pb.personaNotes ? { personaNotes: pb.personaNotes } : {}),
     },
     conversationState: {
       turnNumber: nextTurnNumber,

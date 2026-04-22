@@ -7,6 +7,7 @@ import type { MemorySystem } from "./MemorySystem";
 import type { LocationRegistry } from "./LocationRegistry";
 import type { TownEntity } from "./types";
 import { ensureRelationship, applyConversationOutcome } from "./SocialSystem";
+import { getMergedAgentSlice } from "./settings/aiSimSettings";
 
 export type PlayerNpcScenePacket = {
   scene: { locationLabel: string; locationId: string | null };
@@ -17,6 +18,7 @@ export type PlayerNpcScenePacket = {
     traits: string[];
     mood: string;
     goal: string;
+    personaNotes?: string;
   };
   playerResident: {
     id: string;
@@ -47,6 +49,8 @@ export function buildPlayerNpcScenePacket(
       ? locations.get(player.currentLocationId)
       : undefined) ?? locations.all()[0];
   const r = ensureRelationship(npc, player.id);
+  const pn = getMergedAgentSlice(npc);
+  const pl = getMergedAgentSlice(player);
 
   return {
     scene: {
@@ -55,16 +59,17 @@ export function buildPlayerNpcScenePacket(
     },
     npc: {
       id: npc.id,
-      displayName: npc.displayName,
-      role: npc.role,
-      traits: [...npc.traits],
-      mood: npc.mood,
+      displayName: pn.displayName,
+      role: pn.role,
+      traits: [...pn.traits],
+      mood: pn.mood,
       goal: npc.currentGoal,
+      ...(pn.personaNotes ? { personaNotes: pn.personaNotes } : {}),
     },
     playerResident: {
       id: player.id,
-      displayName: player.displayName,
-      apparentRole: player.role,
+      displayName: pl.displayName,
+      apparentRole: pl.role,
     },
     relationship: { trust: r.trust, tension: r.tension },
     recentNpcMemories: memories.recentFor(npc, 3).map((m) => m.summary),
