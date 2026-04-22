@@ -16,6 +16,13 @@ import type { CityLocation, TownEntity } from "./types";
 import { ENTITY_Y } from "./constants";
 import type { DialogueLine } from "./dialogueTypes";
 import { speakAiLine } from "./speech/characterSpeech";
+import { saveTtsVoiceOverride } from "./ttsVoiceStorage";
+import {
+  ensureDailyPlanForDay,
+  onConversationEndedForDaily,
+  onNpcArrivedAtLocation,
+  tickDailyNeeds,
+} from "./DailyPlanSystem";
 
 const ENCOUNTER_CHECK_INTERVAL_MS = 900;
 
@@ -36,7 +43,7 @@ export class CitySimManager {
 
   private encounterAcc = 0;
 
-  /** Append a line; AI speakers get TTS (Web Speech — Edge often has Microsoft neural voices). */
+  /** Append a line; AI speakers get TTS (Edge TTS API in dev, else Web Speech). */
   appendDialogueLine(entry: Omit<DialogueLine, "id" | "at">): void {
     const line: DialogueLine = {
       id: `dlg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -48,7 +55,8 @@ export class CitySimManager {
     this.dialogueLog.push(line);
     if (this.dialogueLog.length > 120) this.dialogueLog.shift();
     if (entry.speakerId !== HUMAN_ENTITY_ID) {
-      speakAiLine(entry.speakerId, entry.text);
+      const ent = this.entities.get(entry.speakerId);
+      speakAiLine(entry.speakerId, entry.text, ent?.ttsVoiceId);
     }
     this.uiBump();
   }
@@ -59,7 +67,8 @@ export class CitySimManager {
       this.locations,
       () => this.entities.all(),
       () => this.uiBump(),
-      (e) => this.appendDialogueLine(e)
+      (e) => this.appendDialogueLine(e),
+      (a, b) => onConversationEndedForDaily(a, b)
     );
   }
 
@@ -72,6 +81,15 @@ export class CitySimManager {
   setLocations(locations: CityLocation[]): void {
     this.locations = new LocationRegistry(locations);
     this.conversations = this.makeConversationSystem();
+  }
+
+  /** Persisted in localStorage — Edge neural short name (e.g. en-US-AvaNeural). */
+  setNpcTtsVoice(entityId: string, voiceId: string): void {
+    const e = this.entities.get(entityId);
+    if (!e || e.controllerType !== "ai") return;
+    e.ttsVoiceId = voiceId;
+    saveTtsVoiceOverride(entityId, voiceId);
+    this.uiBump();
   }
 
   /** Layout editor: no running sim, no NPCs. */
@@ -120,6 +138,7 @@ export class CitySimManager {
 
     const now = Date.now();
     for (const e of this.entities.aiEntities()) {
+      ensureDailyPlanForDay(e, this.locations);
       scheduleNextDecision(e, now);
     }
     this.simulationEnabled = true;
@@ -163,9 +182,12 @@ export class CitySimManager {
 
     for (const e of list) {
       if (e.controllerType === "ai") {
+        ensureDailyPlanForDay(e, this.locations);
         e.energy = Math.max(0, e.energy - deltaSec * 0.012);
         e.hunger = Math.min(1, e.hunger + deltaSec * 0.008);
-        moveTowardDestination(e, deltaSec);
+        const arrived = moveTowardDestination(e, deltaSec);
+        if (arrived) onNpcArrivedAtLocation(e, this.locations);
+        tickDailyNeeds(e, deltaSec, this.locations);
       }
     }
 

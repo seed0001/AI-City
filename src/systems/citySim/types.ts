@@ -66,6 +66,50 @@ export interface CityLocation {
 
 export type ResidentKind = "npc" | "resident";
 
+/** Intrinsic pressures for the day (0 = urgent, 1 = satisfied). */
+export type DailyNeedKind = "rest" | "food" | "connection" | "purpose";
+
+export interface DailyNeed {
+  kind: DailyNeedKind;
+  label: string;
+  satisfaction: number;
+}
+
+/** Aspirational bias for destination / tone (generated per day). */
+export interface DailyDesire {
+  id: string;
+  label: string;
+  /** 0–1; higher desires steer decisions more often */
+  salience: number;
+}
+
+export interface DailyObjective {
+  id: string;
+  summary: string;
+  /** Exact POI to visit, if set */
+  targetLocationId: string | null;
+  /** Otherwise complete when standing at any of these kinds */
+  targetKinds: CityLocationKind[] | null;
+  /** 0–1 */
+  progress: number;
+  completed: boolean;
+}
+
+/** One in-world “day” arc: headline, concrete objectives, needs, desires, progress. */
+export interface DailyPlan {
+  dayKey: string;
+  headline: string;
+  objectives: DailyObjective[];
+  needs: DailyNeed[];
+  desires: DailyDesire[];
+  /** Average progress across objectives (0–1) */
+  arcProgress: number;
+  /** Slow-moving sense of a day well spent (0–1) */
+  fulfillment: number;
+  /** How many objectives finished today */
+  completionsToday: number;
+}
+
 export interface TownEntity {
   id: string;
   displayName: string;
@@ -102,6 +146,13 @@ export interface TownEntity {
   controlledBy: "ai" | "human";
   /** False for all residents in-world (including the player avatar). */
   knownAsHuman: boolean;
+  /** AI-only: regenerated per local calendar day */
+  dailyPlan: DailyPlan | null;
+  /**
+   * Edge / Azure neural short name (e.g. en-US-AvaNeural) for TTS.
+   * Set from character seed + optional localStorage override.
+   */
+  ttsVoiceId: string;
 }
 
 export interface DialogueTurn {
@@ -129,6 +180,11 @@ export interface WorldContextPacket {
     mood: Mood;
     currentAction: CurrentAction;
     currentGoal: string;
+    dailyHeadline?: string;
+    dayArcProgress?: number;
+    dayFulfillment?: number;
+    dailyNeedsLine?: string;
+    dailyDesiresLine?: string;
   };
   place: {
     locationId: string | null;

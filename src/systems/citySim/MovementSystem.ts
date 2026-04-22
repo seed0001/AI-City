@@ -4,13 +4,15 @@ import { distance2D } from "./PerceptionSystem";
 
 const ARRIVE_EPS = 0.35;
 
+/** @returns true when the entity reached its destination this tick */
 export function moveTowardDestination(
   entity: TownEntity,
   delta: number,
   speed: number = MOVE_SPEED_NPC
-): void {
-  if (entity.currentAction === "talking") return;
-  if (!entity.destinationPosition || entity.currentAction !== "walking") return;
+): boolean {
+  if (entity.currentAction === "talking") return false;
+  if (!entity.destinationPosition || entity.currentAction !== "walking")
+    return false;
 
   const target = entity.destinationPosition;
   const dx = target.x - entity.position.x;
@@ -21,11 +23,13 @@ export function moveTowardDestination(
     entity.position.x = target.x;
     entity.position.z = target.z;
     entity.position.y = target.y;
+    const arrivedLocationId = entity.destinationLocationId;
     entity.destinationPosition = null;
     entity.destinationLocationId = null;
     entity.currentAction = "idle";
     entity.rotation = Math.atan2(dx, dz);
-    return;
+    if (arrivedLocationId) entity.currentLocationId = arrivedLocationId;
+    return true;
   }
 
   const step = speed * delta;
@@ -35,6 +39,7 @@ export function moveTowardDestination(
   entity.position.z += nz * Math.min(step, dist);
   entity.position.y = target.y;
   entity.rotation = Math.atan2(nx, nz);
+  return false;
 }
 
 export function startWalkTo(

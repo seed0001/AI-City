@@ -1,12 +1,13 @@
 import { useCitySim } from "../../hooks/useCitySim";
 import { HUMAN_ENTITY_ID } from "../../data/townCharacters";
+import { EDGE_TTS_VOICE_OPTIONS } from "../../speech/edgeTtsVoiceCatalog";
 
 /**
  * Developer-only HUD. Shows engine truth including controller type.
  * Never import this into PromptBuilder or LLM paths.
  */
 export default function CitySimDebugPanel() {
-  const { getSnapshot, simVersion } = useCitySim();
+  const { getSnapshot, simVersion, manager, bump } = useCitySim();
   const { entities, tick } = getSnapshot();
 
   return (
@@ -48,9 +49,76 @@ export default function CitySimDebugPanel() {
               {e.id === HUMAN_ENTITY_ID ? "human" : e.controllerType}
             </span>
           </div>
+          {e.controllerType === "ai" ? (
+            <label
+              style={{
+                display: "block",
+                marginTop: 6,
+                color: "#c8e0ff",
+              }}
+            >
+              <span style={{ display: "block", marginBottom: 2 }}>TTS voice</span>
+              <select
+                value={e.ttsVoiceId}
+                onChange={(ev) => {
+                  manager.setNpcTtsVoice(e.id, ev.target.value);
+                  bump();
+                }}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  fontSize: 10,
+                  fontFamily: "inherit",
+                  padding: "4px 6px",
+                  borderRadius: 4,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "rgba(0,0,0,0.35)",
+                  color: "#e8e8f0",
+                }}
+              >
+                {!EDGE_TTS_VOICE_OPTIONS.some((o) => o.id === e.ttsVoiceId) ? (
+                  <option value={e.ttsVoiceId}>{e.ttsVoiceId} (custom)</option>
+                ) : null}
+                {EDGE_TTS_VOICE_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label} · {o.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <div>mood: {e.mood}</div>
           <div>action: {e.currentAction}</div>
           <div>goal: {e.currentGoal}</div>
+          {e.dailyPlan ? (
+            <div style={{ marginTop: 6, color: "#a8c8ff" }}>
+              <div style={{ fontWeight: 600 }}>day {e.dailyPlan.dayKey}</div>
+              <div>{e.dailyPlan.headline}</div>
+              <div>
+                arc {(e.dailyPlan.arcProgress * 100).toFixed(0)}% · fulfillment{" "}
+                {(e.dailyPlan.fulfillment * 100).toFixed(0)}%
+              </div>
+              <div style={{ marginTop: 3, color: "#8ab0e8" }}>objectives:</div>
+              {e.dailyPlan.objectives.map((o) => (
+                <div key={o.id} style={{ paddingLeft: 6 }}>
+                  {o.completed ? "✓ " : "○ "}
+                  {o.summary}
+                </div>
+              ))}
+              <div style={{ marginTop: 3, color: "#8ab0e8" }}>needs:</div>
+              {e.dailyPlan.needs.map((n) => (
+                <div key={n.kind} style={{ paddingLeft: 6 }}>
+                  {n.kind}: {(n.satisfaction * 100).toFixed(0)}% — {n.label}
+                </div>
+              ))}
+              <div style={{ marginTop: 3, color: "#8ab0e8" }}>desires:</div>
+              {e.dailyPlan.desires.map((d) => (
+                <div key={d.id} style={{ paddingLeft: 6 }}>
+                  ({(d.salience * 100).toFixed(0)}%) {d.label}
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div>
             pos: ({e.position.x.toFixed(1)}, {e.position.y.toFixed(1)},{" "}
             {e.position.z.toFixed(1)})

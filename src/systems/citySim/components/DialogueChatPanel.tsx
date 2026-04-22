@@ -5,7 +5,7 @@ import { HUMAN_ENTITY_ID } from "../data/townCharacters";
 
 /**
  * Rolling chat + optional player typing. NPC speech is logged from ConversationSystem
- * and spoken via Web Speech API (Edge often exposes Microsoft neural voices).
+ * and spoken via Edge TTS (dev server `/api/edge-tts`) with Web Speech fallback.
  */
 export default function DialogueChatPanel() {
   const { manager, simVersion } = useCitySim();

@@ -3,7 +3,9 @@ import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { CapsuleGeometry, Group, Mesh, MeshStandardMaterial } from "three";
 import { useCitySimContext } from "../CitySimContext";
+import BobVrmNpc from "./npc/BobVrmNpc";
 import LunaVrmNpc from "./npc/LunaVrmNpc";
+import SarahVrmNpc from "./npc/SarahVrmNpc";
 
 const geom = new CapsuleGeometry(0.35, 1.1, 6, 12);
 const matBob = new MeshStandardMaterial({ color: "#94d2bd" });
@@ -97,7 +99,7 @@ function NpcLabel({
   );
 }
 
-/** Capsules + Luna VRM when simulation is running (entities exist). */
+/** Mix of capsule/VRM NPC visuals while simulation is running. */
 export default function CitySimVisuals() {
   const { manager } = useCitySimContext();
   if (!manager.simulationEnabled) return null;
@@ -106,8 +108,10 @@ export default function CitySimVisuals() {
 
   return (
     <>
-      <NpcCapsuleVisual id="npc_bob" displayName="Bob" />
-      <NpcCapsuleVisual id="npc_sarah" displayName="Sarah" />
+      <BobVrmNpc entityId="npc_bob" />
+      <NpcLabel entityId="npc_bob" displayName="Bob" />
+      <SarahVrmNpc entityId="npc_sarah" />
+      <NpcLabel entityId="npc_sarah" displayName="Sarah" />
       <LunaVrmNpc entityId="npc_luna" />
       <NpcLabel entityId="npc_luna" displayName="Luna" />
       <NpcCapsuleVisual id="npc_adam" displayName="Adam" />

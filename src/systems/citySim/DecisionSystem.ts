@@ -6,6 +6,10 @@ import {
   DECISION_INTERVAL_MAX_MS,
   DECISION_INTERVAL_MIN_MS,
 } from "./constants";
+import {
+  dailyObjectivePull,
+  pickDailyPursuitLocation,
+} from "./DailyPlanSystem";
 
 export function scheduleNextDecision(entity: TownEntity, now: number): void {
   const span = DECISION_INTERVAL_MAX_MS - DECISION_INTERVAL_MIN_MS;
@@ -74,11 +78,27 @@ export function runAiDecision(
 
   // Social urge (high = low socialTolerance) -> park or square if present
   const socialUrge = 1 - entity.socialTolerance;
-  if (socialUrge > 0.52) {
+  const connection = entity.dailyPlan?.needs.find((n) => n.kind === "connection");
+  const connectionLow = connection && connection.satisfaction < 0.34;
+  if (socialUrge > 0.52 || connectionLow) {
     const social = locations.randomByKinds(["park", "social"], exclude);
     if (social) {
       entity.currentGoal = `Meet people at ${social.label}`;
       startWalkTo(entity, { ...social.position }, social.id);
+      scheduleNextDecision(entity, now);
+      return;
+    }
+  }
+
+  const pull = dailyObjectivePull(entity);
+  if (Math.random() < pull * 0.88) {
+    const pursuit = pickDailyPursuitLocation(entity, locations, exclude);
+    if (pursuit) {
+      const label =
+        entity.dailyPlan?.objectives.find((o) => !o.completed)?.summary ??
+        pursuit.label;
+      entity.currentGoal = label;
+      startWalkTo(entity, { ...pursuit.position }, pursuit.id);
       scheduleNextDecision(entity, now);
       return;
     }

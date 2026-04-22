@@ -1,5 +1,7 @@
 import type { Mood, TownEntity } from "../types";
 import { ENTITY_Y } from "../constants";
+import { DEFAULT_NPC_TTS_VOICE } from "../speech/edgeTtsVoiceCatalog";
+import { getInitialTtsVoiceId } from "../ttsVoiceStorage";
 
 export type CharacterSeed = {
   id: string;
@@ -9,6 +11,8 @@ export type CharacterSeed = {
   traits: string[];
   /** Preset marker key for this character's home */
   homeMarkerKey: string;
+  /** Default Edge neural voice (`edge-tts` short name); user can override in UI */
+  defaultTtsVoice: string;
 };
 
 export const CHARACTER_SEEDS: CharacterSeed[] = [
@@ -19,6 +23,7 @@ export const CHARACTER_SEEDS: CharacterSeed[] = [
     mood: "friendly",
     traits: ["chatty", "observant"],
     homeMarkerKey: "home_bob",
+    defaultTtsVoice: "en-US-GuyNeural",
   },
   {
     id: "npc_sarah",
@@ -27,6 +32,7 @@ export const CHARACTER_SEEDS: CharacterSeed[] = [
     mood: "nervous",
     traits: ["curious", "polite"],
     homeMarkerKey: "home_sarah",
+    defaultTtsVoice: "en-US-AriaNeural",
   },
   {
     id: "npc_luna",
@@ -35,6 +41,7 @@ export const CHARACTER_SEEDS: CharacterSeed[] = [
     mood: "calm",
     traits: ["direct", "tired"],
     homeMarkerKey: "home_luna",
+    defaultTtsVoice: "en-US-AvaNeural",
   },
   {
     id: "npc_adam",
@@ -43,6 +50,7 @@ export const CHARACTER_SEEDS: CharacterSeed[] = [
     mood: "annoyed",
     traits: ["skeptical", "quick"],
     homeMarkerKey: "home_adam",
+    defaultTtsVoice: "en-US-EricNeural",
   },
 ];
 
@@ -79,6 +87,8 @@ export function createEntityFromSeed(
     residentKind: "npc",
     controlledBy: "ai",
     knownAsHuman: false,
+    dailyPlan: null,
+    ttsVoiceId: getInitialTtsVoiceId(seed.id, seed.defaultTtsVoice),
   };
 }
 
@@ -113,5 +123,7 @@ export function createHumanEntity(
     residentKind: "resident",
     controlledBy: "human",
     knownAsHuman: false,
+    dailyPlan: null,
+    ttsVoiceId: DEFAULT_NPC_TTS_VOICE,
   };
 }

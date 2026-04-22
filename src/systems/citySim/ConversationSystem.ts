@@ -43,7 +43,8 @@ export class ConversationSystem {
     private locations: LocationRegistry,
     private getEntities: () => TownEntity[],
     private onStateChange?: () => void,
-    private onDialogueLine?: (e: DialogueEmit) => void
+    private onDialogueLine?: (e: DialogueEmit) => void,
+    private onConversationEnd?: (a: TownEntity, b: TownEntity) => void
   ) {}
 
   private emitExchangeLines(
@@ -333,6 +334,7 @@ export class ConversationSystem {
   }
 
   private endConversationPair(a: TownEntity, b: TownEntity, now: number): void {
+    this.onConversationEnd?.(a, b);
     a.conversation = null;
     b.conversation = null;
     a.conversationCooldownUntil = now + CONVERSATION_COOLDOWN_MS;

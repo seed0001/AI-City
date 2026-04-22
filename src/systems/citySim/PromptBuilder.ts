@@ -4,6 +4,7 @@ import { MemorySystem } from "./MemorySystem";
 import { ensureRelationship } from "./SocialSystem";
 import { getNearestLocation, getNearbyEntities } from "./PerceptionSystem";
 import { PERCEPTION_RADIUS } from "./constants";
+import { formatDesiresLine, formatNeedsLine } from "./DailyPlanSystem";
 
 /**
  * Builds LLM-safe context: only in-world, perceivable facts.
@@ -53,6 +54,7 @@ export function buildWorldContext(
     }
   }
 
+  const plan = self.dailyPlan;
   return {
     self: {
       displayName: self.displayName,
@@ -60,6 +62,15 @@ export function buildWorldContext(
       mood: self.mood,
       currentAction: self.currentAction,
       currentGoal: self.currentGoal,
+      ...(plan
+        ? {
+            dailyHeadline: plan.headline,
+            dayArcProgress: plan.arcProgress,
+            dayFulfillment: plan.fulfillment,
+            dailyNeedsLine: formatNeedsLine(plan),
+            dailyDesiresLine: formatDesiresLine(plan),
+          }
+        : {}),
     },
     place: {
       locationId: nearest?.id ?? self.currentLocationId,

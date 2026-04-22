@@ -8,6 +8,7 @@ import type { LocationRegistry } from "./LocationRegistry";
 import type { TownEntity } from "./types";
 import { ensureRelationship, applyConversationOutcome } from "./SocialSystem";
 import { getMergedAgentSlice } from "./settings/aiSimSettings";
+import { formatDesiresLine, formatNeedsLine } from "./DailyPlanSystem";
 
 export type PlayerNpcScenePacket = {
   scene: { locationLabel: string; locationId: string | null };
@@ -19,6 +20,10 @@ export type PlayerNpcScenePacket = {
     mood: string;
     goal: string;
     personaNotes?: string;
+    dailyHeadline?: string;
+    dayProgressLine?: string;
+    dailyNeedsLine?: string;
+    dailyDesiresLine?: string;
   };
   playerResident: {
     id: string;
@@ -52,6 +57,21 @@ export function buildPlayerNpcScenePacket(
   const pn = getMergedAgentSlice(npc);
   const pl = getMergedAgentSlice(player);
 
+  const plan = npc.dailyPlan;
+  const dailyExtra =
+    plan && npc.controllerType === "ai"
+      ? (() => {
+          const total = plan.objectives.length;
+          const done = plan.objectives.filter((o) => o.completed).length;
+          return {
+            dailyHeadline: plan.headline,
+            dayProgressLine: `${done}/${total} objectives · arc ${(plan.arcProgress * 100).toFixed(0)}% · fulfillment ${(plan.fulfillment * 100).toFixed(0)}%`,
+            dailyNeedsLine: formatNeedsLine(plan),
+            dailyDesiresLine: formatDesiresLine(plan),
+          };
+        })()
+      : {};
+
   return {
     scene: {
       locationLabel: loc?.label ?? "town",
@@ -65,6 +85,7 @@ export function buildPlayerNpcScenePacket(
       mood: pn.mood,
       goal: npc.currentGoal,
       ...(pn.personaNotes ? { personaNotes: pn.personaNotes } : {}),
+      ...dailyExtra,
     },
     playerResident: {
       id: player.id,

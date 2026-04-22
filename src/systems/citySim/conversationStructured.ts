@@ -12,6 +12,7 @@ import type { Mood, TownEntity } from "./types";
 import { getMergedAgentSlice } from "./settings/aiSimSettings";
 import { ensureRelationship, applyConversationOutcome } from "./SocialSystem";
 import type { FollowUpAction } from "./types";
+import { formatDesiresLine, formatNeedsLine } from "./DailyPlanSystem";
 
 /** Input JSON you send to the model for NPC↔NPC (one tick). */
 export type NpcConversationScenePacket = {
@@ -31,6 +32,10 @@ export type NpcConversationScenePacket = {
     recentMemorySummaries: string[];
     /** Optional scene-painting / speaking-style notes from user settings. */
     personaNotes?: string;
+    dailyHeadline?: string;
+    dayProgressLine?: string;
+    dailyNeedsLine?: string;
+    dailyDesiresLine?: string;
   };
   agentB: {
     id: string;
@@ -42,6 +47,10 @@ export type NpcConversationScenePacket = {
     relationshipToA: string;
     recentMemorySummaries: string[];
     personaNotes?: string;
+    dailyHeadline?: string;
+    dayProgressLine?: string;
+    dailyNeedsLine?: string;
+    dailyDesiresLine?: string;
   };
   conversationState: {
     turnNumber: number;
@@ -117,6 +126,19 @@ export function buildNpcConversationScenePacket(
   const pa = getMergedAgentSlice(a);
   const pb = getMergedAgentSlice(b);
 
+  const dailySlice = (e: TownEntity) => {
+    const p = e.dailyPlan;
+    if (!p) return {};
+    const total = p.objectives.length;
+    const done = p.objectives.filter((o) => o.completed).length;
+    return {
+      dailyHeadline: p.headline,
+      dayProgressLine: `${done}/${total} objectives · day arc ${(p.arcProgress * 100).toFixed(0)}% · fulfillment ${(p.fulfillment * 100).toFixed(0)}%`,
+      dailyNeedsLine: formatNeedsLine(p),
+      dailyDesiresLine: formatDesiresLine(p),
+    };
+  };
+
   return {
     scene: {
       locationId: loc?.id ?? null,
@@ -133,6 +155,7 @@ export function buildNpcConversationScenePacket(
       relationshipToB: `trust ${ra.trust.toFixed(2)}, tension ${ra.tension.toFixed(2)}`,
       recentMemorySummaries: memA,
       ...(pa.personaNotes ? { personaNotes: pa.personaNotes } : {}),
+      ...dailySlice(a),
     },
     agentB: {
       id: b.id,
@@ -144,6 +167,7 @@ export function buildNpcConversationScenePacket(
       relationshipToA: `trust ${rb.trust.toFixed(2)}, tension ${rb.tension.toFixed(2)}`,
       recentMemorySummaries: memB,
       ...(pb.personaNotes ? { personaNotes: pb.personaNotes } : {}),
+      ...dailySlice(b),
     },
     conversationState: {
       turnNumber: nextTurnNumber,
