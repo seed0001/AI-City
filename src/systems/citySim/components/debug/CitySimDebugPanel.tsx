@@ -12,6 +12,9 @@ export default function CitySimDebugPanel() {
 
   return (
     <div
+      onPointerDownCapture={() => {
+        if (document.pointerLockElement) document.exitPointerLock();
+      }}
       style={{
         position: "fixed",
         top: 8,
@@ -46,8 +49,22 @@ export default function CitySimDebugPanel() {
           <div>
             <b>{e.displayName}</b>{" "}
             <span style={{ color: "#7a7a8a" }}>
-              {e.id === HUMAN_ENTITY_ID ? "human" : e.controllerType}
+              {e.gender} · {e.id === HUMAN_ENTITY_ID ? "human" : e.controllerType} ·
+              d{e.townDaysLived} ·
+              {Math.round(e.lifeAdaptation * 100)}% roots
             </span>
+          </div>
+          <div style={{ color: "#8a8a9a", marginTop: 2, fontSize: 9 }}>
+            {e.controllerType === "ai" && e.townRoleOptions.length ? (
+              <>
+                <span style={{ color: "#b8c4d8" }}>{e.role}</span>
+                {e.townRoleOptions.filter((r) => r !== e.role).length
+                  ? ` — could be: ${e.townRoleOptions
+                      .filter((r) => r !== e.role)
+                      .join(", ")}`
+                  : null}
+              </>
+            ) : null}
           </div>
           {e.controllerType === "ai" ? (
             <label

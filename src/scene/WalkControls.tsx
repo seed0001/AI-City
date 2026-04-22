@@ -1,5 +1,5 @@
 import { PointerLockControls } from "@react-three/drei";
-import { useThree, useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { Vector3 } from "three";
 
@@ -7,30 +7,68 @@ type Props = {
   enabled: boolean;
   moveSpeed: number;
   eyeHeight: number;
+  /**
+   * Clicks on these elements (only) call `lock()`. Default is the scene WebGL canvas
+   * — never `document` — so UI buttons/inputs do not require Esc to get the mouse back.
+   */
+  pointerLockSelector?: string;
 };
 
-const KEYS = ["KeyW", "KeyS", "KeyA", "KeyD", "ShiftLeft"];
+const KEYS = ["KeyW", "KeyS", "KeyA", "KeyD", "ShiftLeft"] as const;
+
+function isEditableTarget(t: EventTarget | null): boolean {
+  if (!t || !(t as Node)) return false;
+  const el = t as Element;
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    return el.type !== "button" && el.type !== "submit" && el.type !== "reset";
+  }
+  if (el instanceof HTMLSelectElement) return true;
+  if (el instanceof HTMLElement && el.isContentEditable) return true;
+  return el.closest?.("input, textarea, select, [contenteditable='true']") != null;
+}
+
+function clearKeyMap(
+  m: React.MutableRefObject<Record<string, boolean>>
+): void {
+  for (const k of KEYS) m.current[k] = false;
+}
 
 export default function WalkControls({
   enabled,
   moveSpeed,
   eyeHeight,
+  pointerLockSelector = ".city-scene-canvas-wrap canvas",
 }: Props) {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
 
+  // Optional: if selector matches 0 elements (e.g. tests), fall back to the actual gl canvas
+  const selector = pointerLockSelector;
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (KEYS.includes(e.code)) keys.current[e.code] = true;
+      if (isEditableTarget(e.target) || e.defaultPrevented) return;
+      if (KEYS.includes(e.code as (typeof KEYS)[number]))
+        keys.current[e.code] = true;
     };
     const up = (e: KeyboardEvent) => {
-      if (KEYS.includes(e.code)) keys.current[e.code] = false;
+      if (isEditableTarget(e.target)) return;
+      if (KEYS.includes(e.code as (typeof KEYS)[number]))
+        keys.current[e.code] = false;
+    };
+    const onFocusIn = (e: FocusEvent) => {
+      if (isEditableTarget(e.target)) {
+        clearKeyMap(keys);
+        if (document.pointerLockElement) document.exitPointerLock();
+      }
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    document.addEventListener("focusin", onFocusIn);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      document.removeEventListener("focusin", onFocusIn);
     };
   }, []);
 
@@ -71,5 +109,11 @@ export default function WalkControls({
 
   if (!enabled) return null;
 
-  return <PointerLockControls makeDefault />;
+  return (
+    <PointerLockControls
+      makeDefault
+      // Critical: do NOT use default [document] — that locks on any page click.
+      selector={selector}
+    />
+  );
 }

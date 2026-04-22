@@ -5,16 +5,18 @@
 
 import type { MemorySystem } from "./MemorySystem";
 import type { LocationRegistry } from "./LocationRegistry";
-import type { TownEntity } from "./types";
+import type { CharacterGender, TownEntity } from "./types";
 import { ensureRelationship, applyConversationOutcome } from "./SocialSystem";
 import { getMergedAgentSlice } from "./settings/aiSimSettings";
 import { formatDesiresLine, formatNeedsLine } from "./DailyPlanSystem";
+import { buildLlmLifeFields } from "./LifeArcSystem";
 
 export type PlayerNpcScenePacket = {
   scene: { locationLabel: string; locationId: string | null };
   npc: {
     id: string;
     displayName: string;
+    gender: CharacterGender;
     role: string;
     traits: string[];
     mood: string;
@@ -24,12 +26,21 @@ export type PlayerNpcScenePacket = {
     dayProgressLine?: string;
     dailyNeedsLine?: string;
     dailyDesiresLine?: string;
+    survivalUrgencyLine?: string;
+    lifeInTownLine?: string;
+    voiceAndPersonaLine?: string;
+    otherPossibleRolesLine?: string;
   };
   playerResident: {
     id: string;
     displayName: string;
+    gender: CharacterGender;
     /** In-world only — not "human operator". */
     apparentRole: string;
+    survivalUrgencyLine?: string;
+    lifeInTownLine?: string;
+    voiceAndPersonaLine?: string;
+    otherPossibleRolesLine?: string;
   };
   relationship: { trust: number; tension: number };
   recentNpcMemories: string[];
@@ -58,6 +69,8 @@ export function buildPlayerNpcScenePacket(
   const pl = getMergedAgentSlice(player);
 
   const plan = npc.dailyPlan;
+  const lifeNpc = buildLlmLifeFields(npc);
+  const lifePl = buildLlmLifeFields(player);
   const dailyExtra =
     plan && npc.controllerType === "ai"
       ? (() => {
@@ -80,17 +93,21 @@ export function buildPlayerNpcScenePacket(
     npc: {
       id: npc.id,
       displayName: pn.displayName,
+      gender: pn.gender,
       role: pn.role,
       traits: [...pn.traits],
       mood: pn.mood,
       goal: npc.currentGoal,
       ...(pn.personaNotes ? { personaNotes: pn.personaNotes } : {}),
+      ...lifeNpc,
       ...dailyExtra,
     },
     playerResident: {
       id: player.id,
       displayName: pl.displayName,
+      gender: pl.gender,
       apparentRole: pl.role,
+      ...lifePl,
     },
     relationship: { trust: r.trust, tension: r.tension },
     recentNpcMemories: memories.recentFor(npc, 3).map((m) => m.summary),

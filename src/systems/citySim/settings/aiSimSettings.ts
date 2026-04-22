@@ -190,6 +190,7 @@ export function getMergedAgentSlice(entity: TownEntity) {
     mood: parseMood(o?.mood, entity.mood),
     traits: parseTraits(o?.traits, entity.traits),
     personaNotes: o?.personaNotes?.trim() || undefined,
+    gender: entity.gender,
   };
 }
 

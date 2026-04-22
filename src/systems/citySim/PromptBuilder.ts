@@ -5,6 +5,7 @@ import { ensureRelationship } from "./SocialSystem";
 import { getNearestLocation, getNearbyEntities } from "./PerceptionSystem";
 import { PERCEPTION_RADIUS } from "./constants";
 import { formatDesiresLine, formatNeedsLine } from "./DailyPlanSystem";
+import { buildLlmLifeFields } from "./LifeArcSystem";
 
 /**
  * Builds LLM-safe context: only in-world, perceivable facts.
@@ -55,13 +56,16 @@ export function buildWorldContext(
   }
 
   const plan = self.dailyPlan;
+  const life = buildLlmLifeFields(self);
   return {
     self: {
       displayName: self.displayName,
+      gender: self.gender,
       role: self.role,
       mood: self.mood,
       currentAction: self.currentAction,
       currentGoal: self.currentGoal,
+      ...life,
       ...(plan
         ? {
             dailyHeadline: plan.headline,

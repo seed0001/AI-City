@@ -3,6 +3,7 @@ export { useCitySim } from "./hooks/useCitySim";
 export { CitySimManager } from "./CitySimManager";
 export { buildWorldContext, worldContextToPromptJson } from "./PromptBuilder";
 export type {
+  CharacterGender,
   TownEntity,
   WorldContextPacket,
   MemoryEvent,

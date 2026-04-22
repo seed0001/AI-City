@@ -8,11 +8,12 @@
 
 import type { MemorySystem } from "./MemorySystem";
 import type { LocationRegistry } from "./LocationRegistry";
-import type { Mood, TownEntity } from "./types";
+import type { CharacterGender, Mood, TownEntity } from "./types";
 import { getMergedAgentSlice } from "./settings/aiSimSettings";
 import { ensureRelationship, applyConversationOutcome } from "./SocialSystem";
 import type { FollowUpAction } from "./types";
 import { formatDesiresLine, formatNeedsLine } from "./DailyPlanSystem";
+import { buildLlmLifeFields } from "./LifeArcSystem";
 
 /** Input JSON you send to the model for NPC↔NPC (one tick). */
 export type NpcConversationScenePacket = {
@@ -24,6 +25,7 @@ export type NpcConversationScenePacket = {
   agentA: {
     id: string;
     displayName: string;
+    gender: CharacterGender;
     role: string;
     traits: string[];
     mood: Mood;
@@ -36,10 +38,15 @@ export type NpcConversationScenePacket = {
     dayProgressLine?: string;
     dailyNeedsLine?: string;
     dailyDesiresLine?: string;
+    survivalUrgencyLine?: string;
+    lifeInTownLine?: string;
+    voiceAndPersonaLine?: string;
+    otherPossibleRolesLine?: string;
   };
   agentB: {
     id: string;
     displayName: string;
+    gender: CharacterGender;
     role: string;
     traits: string[];
     mood: Mood;
@@ -51,6 +58,10 @@ export type NpcConversationScenePacket = {
     dayProgressLine?: string;
     dailyNeedsLine?: string;
     dailyDesiresLine?: string;
+    survivalUrgencyLine?: string;
+    lifeInTownLine?: string;
+    voiceAndPersonaLine?: string;
+    otherPossibleRolesLine?: string;
   };
   conversationState: {
     turnNumber: number;
@@ -148,6 +159,7 @@ export function buildNpcConversationScenePacket(
     agentA: {
       id: a.id,
       displayName: pa.displayName,
+      gender: pa.gender,
       role: pa.role,
       traits: [...pa.traits],
       mood: pa.mood,
@@ -155,11 +167,13 @@ export function buildNpcConversationScenePacket(
       relationshipToB: `trust ${ra.trust.toFixed(2)}, tension ${ra.tension.toFixed(2)}`,
       recentMemorySummaries: memA,
       ...(pa.personaNotes ? { personaNotes: pa.personaNotes } : {}),
+      ...buildLlmLifeFields(a),
       ...dailySlice(a),
     },
     agentB: {
       id: b.id,
       displayName: pb.displayName,
+      gender: pb.gender,
       role: pb.role,
       traits: [...pb.traits],
       mood: pb.mood,
@@ -167,6 +181,7 @@ export function buildNpcConversationScenePacket(
       relationshipToA: `trust ${rb.trust.toFixed(2)}, tension ${rb.tension.toFixed(2)}`,
       recentMemorySummaries: memB,
       ...(pb.personaNotes ? { personaNotes: pb.personaNotes } : {}),
+      ...buildLlmLifeFields(b),
       ...dailySlice(b),
     },
     conversationState: {

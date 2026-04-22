@@ -42,6 +42,7 @@ function SceneContent() {
 
   return (
     <Canvas
+      className="city-scene-canvas-wrap"
       shadows
       dpr={[1, 2]}
       gl={glConfig}

@@ -65,8 +65,8 @@ export function runAiDecision(
     }
   }
 
-  // Hungry -> store
-  if (entity.hunger > 0.72) {
+  // Hungry -> store (keeps the body viable in the town; urgency rises past ~0.65)
+  if (entity.hunger > 0.65) {
     const store = locations.randomByKinds(["store"], exclude);
     if (store) {
       entity.currentGoal = `Go to ${store.label}`;

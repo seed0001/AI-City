@@ -11,6 +11,9 @@ export default function LeftHud() {
 
   return (
     <div
+      onPointerDownCapture={() => {
+        if (document.pointerLockElement) document.exitPointerLock();
+      }}
       style={{
         position: "fixed",
         left: 8,

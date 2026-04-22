@@ -66,6 +66,9 @@ export interface CityLocation {
 
 export type ResidentKind = "npc" | "resident";
 
+/** In-world social fact; used for dialogue / pronoun consistency (not controller metadata). */
+export type CharacterGender = "male" | "female";
+
 /** Intrinsic pressures for the day (0 = urgent, 1 = satisfied). */
 export type DailyNeedKind = "rest" | "food" | "connection" | "purpose";
 
@@ -113,6 +116,8 @@ export interface DailyPlan {
 export interface TownEntity {
   id: string;
   displayName: string;
+  gender: CharacterGender;
+  /** Chosen or evolved social role in town (merged with user settings in prompts). */
   role: string;
   position: { x: number; y: number; z: number };
   /** Y-axis rotation in radians */
@@ -153,6 +158,14 @@ export interface TownEntity {
    * Set from character seed + optional localStorage override.
    */
   ttsVoiceId: string;
+  /** Other ways they could belong here; the engine may shift `role` over time. */
+  townRoleOptions: string[];
+  /** 0-1: roots / adaptation to living here (from days, needs, memories). */
+  lifeAdaptation: number;
+  /** Number of in-sim local calendar days lived since first daily plan. */
+  townDaysLived: number;
+  /** @internal last calendar key used for `townDaysLived` (not for LLM) */
+  lastSimDayKey: string | null;
 }
 
 export interface DialogueTurn {
@@ -176,6 +189,7 @@ export type FollowUpAction =
 export interface WorldContextPacket {
   self: {
     displayName: string;
+    gender: CharacterGender;
     role: string;
     mood: Mood;
     currentAction: CurrentAction;
@@ -185,6 +199,14 @@ export interface WorldContextPacket {
     dayFulfillment?: number;
     dailyNeedsLine?: string;
     dailyDesiresLine?: string;
+    /** Body / social pressure to stay viable in the town. */
+    survivalUrgencyLine?: string;
+    /** Days here, growth, and how they relate to the place. */
+    lifeInTownLine?: string;
+    /** Speaking voice (Neural) + stable traits. */
+    voiceAndPersonaLine?: string;
+    /** Ways they could see themselves; current role is `role` above. */
+    otherPossibleRolesLine?: string;
   };
   place: {
     locationId: string | null;
