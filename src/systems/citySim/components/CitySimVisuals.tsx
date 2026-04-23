@@ -11,10 +11,23 @@ const geom = new CapsuleGeometry(0.35, 1.1, 6, 12);
 const matBob = new MeshStandardMaterial({ color: "#94d2bd" });
 const matSarah = new MeshStandardMaterial({ color: "#ff9e00" });
 const matAdam = new MeshStandardMaterial({ color: "#ff6b6b" });
+const matMaya = new MeshStandardMaterial({ color: "#f472b6" });
+const matRiver = new MeshStandardMaterial({ color: "#38bdf8" });
+const matTina = new MeshStandardMaterial({ color: "#fdba74" });
+const matOmar = new MeshStandardMaterial({ color: "#a78bfa" });
+const matMina = new MeshStandardMaterial({ color: "#fde047" });
+const matChris = new MeshStandardMaterial({ color: "#2dd4bf" });
 
 function capsuleMaterial(id: string) {
   if (id === "npc_bob") return matBob;
   if (id === "npc_sarah") return matSarah;
+  if (id === "npc_adam") return matAdam;
+  if (id === "npc_maya") return matMaya;
+  if (id === "npc_river") return matRiver;
+  if (id === "npc_tina") return matTina;
+  if (id === "npc_omar") return matOmar;
+  if (id === "npc_mina") return matMina;
+  if (id === "npc_chris") return matChris;
   return matAdam;
 }
 
@@ -115,6 +128,12 @@ export default function CitySimVisuals() {
       <LunaVrmNpc entityId="npc_luna" />
       <NpcLabel entityId="npc_luna" displayName="Luna" />
       <NpcCapsuleVisual id="npc_adam" displayName="Adam" />
+      <NpcCapsuleVisual id="npc_maya" displayName="Maya" />
+      <NpcCapsuleVisual id="npc_river" displayName="River" />
+      <NpcCapsuleVisual id="npc_tina" displayName="Tina" />
+      <NpcCapsuleVisual id="npc_omar" displayName="Omar" />
+      <NpcCapsuleVisual id="npc_mina" displayName="Mina" />
+      <NpcCapsuleVisual id="npc_chris" displayName="Chris" />
     </>
   );
 }

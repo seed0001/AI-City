@@ -1,6 +1,7 @@
 import { useCitySim } from "../../hooks/useCitySim";
 import { HUMAN_ENTITY_ID } from "../../data/townCharacters";
 import { EDGE_TTS_VOICE_OPTIONS } from "../../speech/edgeTtsVoiceCatalog";
+import { MAX_ACTIVE_CONVERSATIONS } from "../../constants";
 
 /**
  * Developer-only HUD. Shows engine truth including controller type.
@@ -9,6 +10,8 @@ import { EDGE_TTS_VOICE_OPTIONS } from "../../speech/edgeTtsVoiceCatalog";
 export default function CitySimDebugPanel() {
   const { getSnapshot, simVersion, manager, bump } = useCitySim();
   const { entities, tick } = getSnapshot();
+  const now = Date.now();
+  const convDebug = manager.conversations.getDebugSnapshot(entities, now);
 
   return (
     <div
@@ -37,6 +40,110 @@ export default function CitySimDebugPanel() {
       <div style={{ fontWeight: 700, marginBottom: 6, color: "#ffb870" }}>
         City sim (debug) · v{simVersion} · t{tick}
       </div>
+      <div
+        style={{
+          marginBottom: 10,
+          padding: 8,
+          background: "rgba(20,30,50,0.5)",
+          border: "1px solid rgba(100,150,255,0.2)",
+          borderRadius: 6,
+          color: "#b8c8e8",
+        }}
+      >
+        <div style={{ fontWeight: 600, color: "#8ab4ff" }}>Conversations</div>
+        <div style={{ fontSize: 9, color: "#6a7a8a" }}>
+          active: {manager.conversations.getActiveCount()} (max {MAX_ACTIVE_CONVERSATIONS})
+        </div>
+        {convDebug.activeConversations.length ? (
+          convDebug.activeConversations.map((c) => (
+            <div
+              key={c.id}
+              style={{
+                marginTop: 6,
+                fontSize: 9,
+                padding: 6,
+                background: "rgba(0,0,0,0.25)",
+                borderRadius: 4,
+              }}
+            >
+              <div style={{ color: "#a8c4ff" }}>
+                {c.id.slice(0, 20)}…
+              </div>
+              <div>{c.displayNames}</div>
+              <div style={{ color: "#7a8a9a" }}>loc: {c.locationId}</div>
+              <div style={{ marginTop: 2, color: "#9ab0c8" }}>
+                last: “{c.lastTurnText.length > 80
+                  ? `${c.lastTurnText.slice(0, 80)}…`
+                  : c.lastTurnText}”
+              </div>
+              <div style={{ color: "#5a6a7a" }}>
+                {c.turns} turns · {Math.round(c.msSinceLastTurn / 100) / 10}s since last
+              </div>
+            </div>
+          ))
+        ) : (
+          <div style={{ fontSize: 9, color: "#5a5a6a" }}>none</div>
+        )}
+        <div style={{ marginTop: 8, color: "#7a8a9a" }}>entity state</div>
+        {convDebug.entityConversation.map((r) => (
+          <div key={r.id} style={{ fontSize: 8, color: "#6a7a8a" }}>
+            {r.name}: in={String(r.inConversation)}
+            {r.conversationId
+              ? ` · ${r.conversationId.slice(0, 16)}…`
+              : ""}
+          </div>
+        ))}
+      </div>
+      {manager.burgerService ? (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: 8,
+            background: "rgba(30,50,20,0.4)",
+            border: "1px solid rgba(120,200,100,0.25)",
+            borderRadius: 6,
+            color: "#b8e8a8",
+          }}
+        >
+          <div style={{ fontWeight: 600, color: "#86efac" }}>Burger service</div>
+          <div>
+            phase: {manager.burgerService.runtime.workerPhase} · order:{" "}
+            {manager.burgerService.runtime.activeOrderId ?? "—"}
+          </div>
+          <div>
+            till: ${manager.burgerService.runtime.cashInDrawer.toFixed(0)} · open orders:{" "}
+            {manager.burgerService.runtime.orders.length}
+          </div>
+          {(() => {
+            const b = manager.burgerService.getDebugSnapshot();
+            return (
+              <div style={{ marginTop: 4, fontSize: 9, color: "#7a9a7a" }}>
+                player ${b.humanMoney?.toFixed(0) ?? "—"} · prep @{" "}
+                {b.prepCompleteAt
+                  ? new Date(b.prepCompleteAt).toLocaleTimeString()
+                  : "—"}{" "}
+                · lock {b.primaryWorker ? String(b.primaryWorker.lock) : "—"}
+              </div>
+            );
+          })()}
+          <div style={{ fontSize: 9, color: "#5a6a5a" }}>
+            orders:{" "}
+            {manager.burgerService.runtime.orders
+              .map((o) => `${o.id.slice(-6)}:${o.state}`)
+              .join(" · ") || "—"}
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            marginBottom: 8,
+            fontSize: 9,
+            color: "#5a5a6a",
+          }}
+        >
+          Burger joint: inactive (place required sub-markers + relaunch)
+        </div>
+      )}
       {entities.map((e) => (
         <div
           key={e.id}
@@ -51,8 +158,15 @@ export default function CitySimDebugPanel() {
             <span style={{ color: "#7a7a8a" }}>
               {e.gender} · {e.id === HUMAN_ENTITY_ID ? "human" : e.controllerType} ·
               d{e.townDaysLived} ·
-              {Math.round(e.lifeAdaptation * 100)}% roots
+              {Math.round(e.lifeAdaptation * 100)}% roots · $
+              {e.money.toFixed(0)}
             </span>
+            {e.id === "npc_maya" && manager.burgerService ? (
+              <span style={{ color: "#a7f3d0" }}> · burger line</span>
+            ) : null}
+            {e.id === "npc_river" && manager.burgerService ? (
+              <span style={{ color: "#a7c4f3" }}> · shift lead (bench)</span>
+            ) : null}
           </div>
           <div style={{ color: "#8a8a9a", marginTop: 2, fontSize: 9 }}>
             {e.controllerType === "ai" && e.townRoleOptions.length ? (

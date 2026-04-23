@@ -8,19 +8,59 @@
 
 import type { MemorySystem } from "./MemorySystem";
 import type { LocationRegistry } from "./LocationRegistry";
-import type { CharacterGender, Mood, TownEntity } from "./types";
+import type { CharacterGender, ConversationTurn, CurrentAction, Mood, TownEntity } from "./types";
 import { getMergedAgentSlice } from "./settings/aiSimSettings";
 import { ensureRelationship, applyConversationOutcome } from "./SocialSystem";
 import type { FollowUpAction } from "./types";
 import { formatDesiresLine, formatNeedsLine } from "./DailyPlanSystem";
 import { buildLlmLifeFields } from "./LifeArcSystem";
 
+function formatActivityLine(e: TownEntity, locationLabel: string): string {
+  const role = e.role;
+  const act = e.currentAction;
+  const loc = e.currentLocationId ?? "";
+  if (loc.includes("counter") || loc.includes("order") || loc.includes("worker")) {
+    return `On shift / at service — ${act} at ${locationLabel} (${role})`;
+  }
+  if (loc.includes("dining") || loc.includes("booth") || act === "sitting") {
+    return `Settled in — ${act} at ${locationLabel} (${role})`;
+  }
+  if (act === "walking") {
+    return `Passing through — ${act} near ${locationLabel} (${role})`;
+  }
+  if (act === "talking") {
+    return `In dialogue — at ${locationLabel} (${role})`;
+  }
+  return `${act} at ${locationLabel} (${role})`;
+}
+
+function pickLocationForPair(
+  a: TownEntity,
+  b: TownEntity,
+  locations: LocationRegistry
+): { id: string | null; label: string; kind: string } {
+  const id =
+    a.currentLocationId && a.currentLocationId === b.currentLocationId
+      ? a.currentLocationId
+      : a.currentLocationId ?? b.currentLocationId;
+  const loc = id ? locations.get(id) : undefined;
+  const label = loc?.label ?? "town";
+  return { id: id ?? null, label, kind: String(loc?.type ?? "area") };
+}
+
 /** Input JSON you send to the model for NPC↔NPC (one tick). */
 export type NpcConversationScenePacket = {
   scene: {
     locationId: string | null;
     locationLabel: string;
+    locationKind: string;
+    environmentHint: string;
     timeOfDay: "morning" | "afternoon" | "evening" | "night";
+  };
+  /** Last few lines of this same conversation (no other speakers). */
+  recentTurns: Array<{ speakerId: string; text: string; timestamp: number }>;
+  scriptGuidance: {
+    continueThread: boolean;
   };
   agentA: {
     id: string;
@@ -29,6 +69,8 @@ export type NpcConversationScenePacket = {
     role: string;
     traits: string[];
     mood: Mood;
+    currentAction: CurrentAction;
+    activityLine: string;
     goal: string;
     relationshipToB: string;
     recentMemorySummaries: string[];
@@ -50,6 +92,8 @@ export type NpcConversationScenePacket = {
     role: string;
     traits: string[];
     mood: Mood;
+    currentAction: CurrentAction;
+    activityLine: string;
     goal: string;
     relationshipToA: string;
     recentMemorySummaries: string[];
@@ -93,7 +137,6 @@ export type StructuredNpcExchangeResult = {
 
 export function computeTalkBudget(a: TownEntity, b: TownEntity): {
   maxTurns: number;
-  tickMs: number;
 } {
   const hungry = Math.max(a.hunger, b.hunger);
   const tired = Math.min(a.energy, b.energy);
@@ -104,8 +147,7 @@ export function computeTalkBudget(a: TownEntity, b: TownEntity): {
   if (tired < 0.22) maxTurns = Math.min(maxTurns, 2);
   if (ra.tension > 0.78) maxTurns = Math.min(maxTurns, 2);
   if (ra.tension > 0.55) maxTurns = Math.min(maxTurns, 3);
-  const tickMs = 2400 + Math.random() * 900;
-  return { maxTurns, tickMs };
+  return { maxTurns };
 }
 
 function timeOfDayBucket(): NpcConversationScenePacket["scene"]["timeOfDay"] {
@@ -123,19 +165,27 @@ export function buildNpcConversationScenePacket(
   memories: MemorySystem,
   nextTurnNumber: number,
   maxTurns: number,
-  lastTopic: string | null
+  lastTopic: string | null,
+  /** Last lines in *this* conversation; drives continuation and anti-repetition. */
+  conversationTurns: ConversationTurn[] = []
 ): NpcConversationScenePacket {
-  const loc =
-    (a.currentLocationId
-      ? locations.get(a.currentLocationId)
-      : undefined) ?? locations.all()[0];
-  const label = loc?.label ?? "town";
+  const { id: placeId, label, kind } = pickLocationForPair(a, b, locations);
+  const loc = placeId ? locations.get(placeId) : locations.all()[0];
+  const env =
+    loc?.type === "store" || loc?.type === "business"
+      ? "indoor, public-facing"
+      : loc?.type === "outdoor" || loc?.type === "park"
+        ? "outdoors, open air"
+        : loc?.type === "path"
+          ? "along a path"
+          : "in town";
   const ra = ensureRelationship(a, b.id);
   const rb = ensureRelationship(b, a.id);
-  const memA = memories.recentFor(a, 3).map((m) => m.summary);
-  const memB = memories.recentFor(b, 3).map((m) => m.summary);
+  const memA = memories.recentFor(a, 2).map((m) => m.summary);
+  const memB = memories.recentFor(b, 2).map((m) => m.summary);
   const pa = getMergedAgentSlice(a);
   const pb = getMergedAgentSlice(b);
+  const recentWindow = conversationTurns.slice(-4);
 
   const dailySlice = (e: TownEntity) => {
     const p = e.dailyPlan;
@@ -152,9 +202,19 @@ export function buildNpcConversationScenePacket(
 
   return {
     scene: {
-      locationId: loc?.id ?? null,
+      locationId: placeId ?? loc?.id ?? null,
       locationLabel: label,
+      locationKind: kind,
+      environmentHint: env,
       timeOfDay: timeOfDayBucket(),
+    },
+    recentTurns: recentWindow.map((t) => ({
+      speakerId: t.speakerId,
+      text: t.text,
+      timestamp: t.timestamp,
+    })),
+    scriptGuidance: {
+      continueThread: recentWindow.length > 0,
     },
     agentA: {
       id: a.id,
@@ -163,6 +223,8 @@ export function buildNpcConversationScenePacket(
       role: pa.role,
       traits: [...pa.traits],
       mood: pa.mood,
+      currentAction: a.currentAction,
+      activityLine: formatActivityLine(a, label),
       goal: a.currentGoal,
       relationshipToB: `trust ${ra.trust.toFixed(2)}, tension ${ra.tension.toFixed(2)}`,
       recentMemorySummaries: memA,
@@ -177,6 +239,8 @@ export function buildNpcConversationScenePacket(
       role: pb.role,
       traits: [...pb.traits],
       mood: pb.mood,
+      currentAction: b.currentAction,
+      activityLine: formatActivityLine(b, label),
       goal: b.currentGoal,
       relationshipToA: `trust ${rb.trust.toFixed(2)}, tension ${rb.tension.toFixed(2)}`,
       recentMemorySummaries: memB,
@@ -196,27 +260,32 @@ export function buildNpcConversationScenePacket(
 export function generateStubStructuredNpcExchange(
   packet: NpcConversationScenePacket
 ): StructuredNpcExchangeResult {
-  const { agentA, agentB, scene, conversationState } = packet;
+  const { agentA, agentB, scene, conversationState, scriptGuidance, recentTurns } =
+    packet;
   const tension = parseFloat(
     agentA.relationshipToB.match(/tension ([\d.]+)/)?.[1] ?? "0.3"
   );
 
-  const lineA =
-    tension > 0.65
+  const continuing = scriptGuidance.continueThread && recentTurns.length > 0;
+  const lineA = continuing
+    ? tension > 0.65
+      ? `I'm listening — but keep it short.`
+      : `Picking that up — ${scene.locationLabel} and ${scene.environmentHint} fit what we were saying.`
+    : tension > 0.65
       ? `Make it quick — I'm not in the mood.`
-      : `Fancy seeing you near ${scene.locationLabel}.`;
+      : `Didn't think I'd run into you here.`;
 
-  const lineB =
-    agentB.mood === "annoyed" || tension > 0.55
-      ? `Yeah. Small town.`
-      : `Hey — got a second?`;
+  const lineB = continuing
+    ? agentB.mood === "annoyed" || tension > 0.55
+      ? `Point taken. I'll match your pace.`
+      : `Same — I was about to head out, so one more thing…`
+    : agentB.mood === "annoyed" || tension > 0.55
+      ? `Yeah. Small place.`
+      : `I was just about to ask the same.`;
 
   const turn = conversationState.turnNumber;
   const maxT = conversationState.maxTurns;
-  const continueConv =
-    turn < maxT &&
-    tension < 0.72 &&
-    Math.random() < (turn === 1 ? 0.62 : 0.45);
+  const continueConv = turn < maxT && tension < 0.72;
 
   const trustDelta = tension > 0.55 ? -0.03 : 0.04;
   const tensionDelta = tension > 0.55 ? 0.05 : -0.02;

@@ -24,7 +24,8 @@ export function runAiDecision(
   now: number
 ): void {
   if (entity.controllerType !== "ai") return;
-  if (entity.conversation) return;
+  if (entity.serviceMovementLock) return;
+  if (entity.inConversation) return;
   if (entity.currentAction === "walking") return;
   if (now < entity.nextDecisionAt) return;
 

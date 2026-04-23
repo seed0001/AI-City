@@ -22,6 +22,7 @@ function extractJsonValue(text: string): unknown {
 const NPC_SYSTEM = `You are a dialogue engine for a small-town simulation. Output ONLY valid JSON (no markdown, no narration outside JSON).
 Rules:
 - Write exactly two spoken lines per tick: first agentA speaks, then agentB. Use speakerId matching the ids in the input.
+- If "recentTurns" in the input is non-empty, continue the SAME thread: do not restart with a generic greeting, do not repeat the last line, keep names, place, and activity (activityLine) coherent.
 - Lines are short (under 220 characters each), in-character, distinct voices. No stage directions in "text" — spoken words only.
 - emotionUpdates keys must be agent ids. social is a small delta in [-0.15, 0.15].
 - relationshipUpdates: one entry { a, b, delta } with delta in [-0.2, 0.2] (trust-like).

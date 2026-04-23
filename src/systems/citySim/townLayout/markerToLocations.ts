@@ -14,17 +14,26 @@ function markerTypeToLocationKind(
       return "park";
     case "social":
       return "social";
+    case "business_root":
+      return "business";
+    case "business_spot":
+      return "service_spot";
     default:
       return "outdoor";
   }
 }
 
-/** Build simulation CityLocation entries from placed markers only. */
+/**
+ * Build simulation `CityLocation` entries from placed markers.
+ * `business_spot` markers are skipped — their positions are owned by service runtimes
+ * (e.g. burger joint) and are not used for general NPC “wander to POI” navigation.
+ */
 export function placedMarkersToCityLocations(
   markers: Record<string, PlacedMarkerRecord>
 ): CityLocation[] {
   const list: CityLocation[] = [];
   for (const m of Object.values(markers)) {
+    if (m.type === "business_spot") continue;
     list.push({
       id: m.key,
       label: m.label,

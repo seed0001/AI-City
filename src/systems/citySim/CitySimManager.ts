@@ -23,6 +23,10 @@ import {
   onNpcArrivedAtLocation,
   tickDailyNeeds,
 } from "./DailyPlanSystem";
+import type { PlacedMarkerRecord } from "./townLayout/types";
+import { tryBuildBurgerRuntimeFromLayout } from "./service/buildBurgerRuntimeFromLayout";
+import { BURGER_LINE_WORKER_ID } from "./service/burgerConstants";
+import { BurgerServiceController, type PlaceBurgerOrderResult } from "./service/burgerServiceController";
 
 const ENCOUNTER_CHECK_INTERVAL_MS = 900;
 
@@ -34,6 +38,13 @@ export class CitySimManager {
   conversations: ConversationSystem;
   /** When false, CitySimLoop does not advance AI / encounters. */
   simulationEnabled = false;
+  /**
+   * Copy of the last bootstrapped layout’s markers (includes `business_spot` keys
+   * that are not in `CityLocation` navigation).
+   */
+  private placedMarkers: Record<string, PlacedMarkerRecord> | null = null;
+  /** First food-counter service slice; null if required burger markers are not placed. */
+  burgerService: BurgerServiceController | null = null;
 
   /** Set from React (CitySimProvider) so async Ollama replies bump UI. */
   uiBump: () => void = () => {};
@@ -95,6 +106,8 @@ export class CitySimManager {
   /** Layout editor: no running sim, no NPCs. */
   enterLayoutMode(): void {
     this.simulationEnabled = false;
+    this.placedMarkers = null;
+    this.burgerService = null;
     this.entities.clear();
   }
 
@@ -102,6 +115,8 @@ export class CitySimManager {
    * Full sim bootstrap: NPCs at homes, player near town center POI, registry = placed markers.
    */
   bootstrapFromSavedLayout(layout: SavedTownLayout): void {
+    this.placedMarkers = { ...layout.markers };
+    this.burgerService = null;
     const locs = placedMarkersToCityLocations(layout.markers);
     this.setLocations(locs);
     this.entities.clear();
@@ -119,6 +134,31 @@ export class CitySimManager {
       const e = createEntityFromSeed(seed, pos);
       e.currentLocationId = seed.homeMarkerKey;
       this.entities.add(e);
+    }
+
+    const br = tryBuildBurgerRuntimeFromLayout(layout.markers);
+    if (br) {
+      this.burgerService = new BurgerServiceController(br, {
+        getEntity: (id) => this.entities.get(id),
+        getHuman: () => this.getHuman(),
+        appendDialogueLine: (entry) => this.appendDialogueLine(entry),
+        getPlacedMarkers: () => this.placedMarkers,
+        bump: this.uiBump,
+      });
+    }
+
+    const maya = this.entities.get(BURGER_LINE_WORKER_ID);
+    const counterPlaced = layout.markers["burger_worker_counter_spot"];
+    if (maya && this.burgerService && counterPlaced) {
+      maya.position = {
+        x: counterPlaced.position.x,
+        y: ENTITY_Y,
+        z: counterPlaced.position.z,
+      };
+      maya.currentLocationId = "burger_worker_counter_spot";
+      maya.destinationPosition = null;
+      maya.destinationLocationId = null;
+      maya.currentAction = "idle";
     }
 
     const store = layout.markers["store_main"];
@@ -186,10 +226,19 @@ export class CitySimManager {
         e.energy = Math.max(0, e.energy - deltaSec * 0.012);
         e.hunger = Math.min(1, e.hunger + deltaSec * 0.008);
         const arrived = moveTowardDestination(e, deltaSec);
-        if (arrived) onNpcArrivedAtLocation(e, this.locations);
+        if (arrived) {
+          onNpcArrivedAtLocation(e, this.locations);
+          this.burgerService?.onWorkerArrivedAtMarker(
+            e,
+            e.currentLocationId,
+            now
+          );
+        }
         tickDailyNeeds(e, deltaSec, this.locations);
       }
     }
+
+    this.burgerService?.tick(now);
 
     this.conversations.tickActiveConversations(list, now);
 
@@ -206,6 +255,13 @@ export class CitySimManager {
 
   getHuman(): TownEntity | undefined {
     return this.entities.get(HUMAN_ENTITY_ID);
+  }
+
+  tryPlayerPlaceBurgerOrder(): PlaceBurgerOrderResult {
+    if (!this.burgerService) {
+      return { ok: false, reason: "inactive" };
+    }
+    return this.burgerService.tryPlayerPlaceBurgerOrder();
   }
 
   snapshot(): { entities: TownEntity[]; tick: number } {

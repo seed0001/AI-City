@@ -35,6 +35,26 @@ export function getNearestLocation(
   return best;
 }
 
+/**
+ * True when two entities plausibly share a place: same `currentLocationId`, or
+ * they are very close in space (edge of different POI cells).
+ */
+export function sharePlaceForTalk(
+  a: TownEntity,
+  b: TownEntity,
+  talkRadius: number
+): boolean {
+  if (
+    a.currentLocationId &&
+    b.currentLocationId &&
+    a.currentLocationId === b.currentLocationId
+  ) {
+    return true;
+  }
+  const d = distance2D(a.position, b.position);
+  return d <= talkRadius * 0.7;
+}
+
 export function canStartConversation(
   a: TownEntity,
   b: TownEntity,
@@ -42,13 +62,14 @@ export function canStartConversation(
   now: number
 ): boolean {
   if (a.id === b.id) return false;
-  if (a.conversation || b.conversation) return false;
+  if (a.inConversation || b.inConversation) return false;
   if (now < a.conversationCooldownUntil || now < b.conversationCooldownUntil)
     return false;
   if (a.currentAction === "leaving" || b.currentAction === "leaving")
     return false;
   if (a.avoidingEntityId === b.id || b.avoidingEntityId === a.id) return false;
   if (distance2D(a.position, b.position) > talkRadius) return false;
+  if (!sharePlaceForTalk(a, b, talkRadius)) return false;
   if (a.socialTolerance < 0.15 || b.socialTolerance < 0.15) return false;
   return true;
 }

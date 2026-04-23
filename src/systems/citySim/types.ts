@@ -22,19 +22,23 @@ export interface RelationshipState {
   avoid: boolean;
 }
 
-export interface ConversationState {
-  partnerId: string;
+/** A single line in a continuing dialogue (NPC↔NPC or shared player↔NPC). */
+export type ConversationTurn = {
+  speakerId: string;
+  text: string;
+  timestamp: number;
+};
+
+/** One owned conversation; living state is updated by ConversationSystem. */
+export type Conversation = {
+  id: string;
+  participants: string[];
+  locationId: string;
   startedAt: number;
-  lastSpeakerId: string;
-  lastLine: string;
-  phase: "opening" | "exchange" | "resolving";
-  endsAt: number;
-  /** Completed exchange ticks (incremented each structured tick). */
-  turnNumber: number;
-  /** Engine talk budget; LLM returns at most one micro-exchange per tick. */
-  maxTurns: number;
-  lastTopic: string | null;
-}
+  lastTurnAt: number;
+  turns: ConversationTurn[];
+  active: boolean;
+};
 
 export interface MemoryEvent {
   id: string;
@@ -54,7 +58,10 @@ export type CityLocationKind =
   | "home"
   | "store"
   | "park"
-  | "social";
+  | "social"
+  /** Placed for businesses; not used for general NPC wandering via LocationRegistry. */
+  | "service_spot"
+  | "business";
 
 export interface CityLocation {
   id: string;
@@ -67,7 +74,7 @@ export interface CityLocation {
 export type ResidentKind = "npc" | "resident";
 
 /** In-world social fact; used for dialogue / pronoun consistency (not controller metadata). */
-export type CharacterGender = "male" | "female";
+export type CharacterGender = "male" | "female" | "nonbinary";
 
 /** Intrinsic pressures for the day (0 = urgent, 1 = satisfied). */
 export type DailyNeedKind = "rest" | "food" | "connection" | "purpose";
@@ -134,7 +141,18 @@ export interface TownEntity {
   /** Other entity id -> relationship */
   relationships: Record<string, RelationshipState>;
   memoryIds: string[];
-  conversation: ConversationState | null;
+  /**
+   * True while in an active talk; at most one conversation per entity.
+   * Use `conversationId` to look up the shared `Conversation` on ConversationSystem.
+   */
+  inConversation: boolean;
+  /** Set when `inConversation`; cleared on end. */
+  conversationId?: string;
+  /**
+   * Denormalized: last line in the current (or just-ended) turn-taking thread, for LLM world context.
+   * Format: "Name: text"
+   */
+  conversationLastLine?: string;
   controllerType: ControllerType;
   /** Milliseconds timestamp until next autonomous decision */
   nextDecisionAt: number;
@@ -166,6 +184,16 @@ export interface TownEntity {
   townDaysLived: number;
   /** @internal last calendar key used for `townDaysLived` (not for LLM) */
   lastSimDayKey: string | null;
+  /**
+   * Cash on hand (abstract currency units). Not exposed to LLM by default; economy layer
+   * updates this for service flows (payment, later payroll, etc.).
+   */
+  money: number;
+  /**
+   * When true, autonomous `DecisionSystem` will not pick new random destinations; a service
+   * or scripted flow owns movement.
+   */
+  serviceMovementLock: boolean;
 }
 
 export interface DialogueTurn {

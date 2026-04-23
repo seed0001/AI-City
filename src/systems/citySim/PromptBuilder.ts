@@ -49,8 +49,13 @@ export function buildWorldContext(
         familiarity: r.familiarity,
         friendliness: r.friendliness,
       };
-      if (self.conversation?.partnerId === other.id) {
-        lastUtterance = self.conversation.lastLine;
+      if (
+        self.inConversation &&
+        self.conversationId &&
+        other.inConversation &&
+        other.conversationId === self.conversationId
+      ) {
+        lastUtterance = self.conversationLastLine ?? null;
       }
     }
   }

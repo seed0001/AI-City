@@ -187,7 +187,11 @@ export function generateDailyPlan(
   entity: TownEntity,
   locations: LocationRegistry
 ): DailyPlan {
-  const all = locations.all();
+  const all = locations
+    .all()
+    .filter(
+      (l) => l.type !== "service_spot" && l.type !== "interior"
+    );
   const dayKey = localDayKey();
   const objectives: DailyObjective[] = [];
 

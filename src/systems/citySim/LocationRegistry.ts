@@ -31,8 +31,11 @@ export class LocationRegistry {
   }
 
   randomDestination(excludeId?: string): CityLocation {
-    const list = this.all().filter((l) => l.id !== excludeId);
-    if (!list.length) return this.all()[0]!;
+    const list = this.all().filter(
+      (l) =>
+        l.id !== excludeId && l.type !== "service_spot" && l.type !== "interior"
+    );
+    if (!list.length) return this.all().filter((l) => l.id !== excludeId)[0] ?? this.all()[0]!;
     return list[Math.floor(Math.random() * list.length)]!;
   }
 }

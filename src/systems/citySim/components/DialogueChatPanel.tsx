@@ -8,10 +8,11 @@ import { HUMAN_ENTITY_ID } from "../data/townCharacters";
  * and spoken via Edge TTS (dev server `/api/edge-tts`) with Web Speech fallback.
  */
 export default function DialogueChatPanel() {
-  const { manager, simVersion } = useCitySim();
+  const { manager, simVersion, bump } = useCitySim();
   const scrollRef = useRef<HTMLDivElement>(null);
   const lines = manager.dialogueLog;
   const [draft, setDraft] = useState("");
+  const [orderHint, setOrderHint] = useState<string | null>(null);
 
   useEffect(() => {
     initSpeechVoices();
@@ -32,6 +33,26 @@ export default function DialogueChatPanel() {
       text: t,
     });
     setDraft("");
+  };
+
+  const tryBurgerOrder = () => {
+    setOrderHint(null);
+    const r = manager.tryPlayerPlaceBurgerOrder();
+    if (r.ok) {
+      setOrderHint(
+        r.kind === "queued" ? "In line — Maya will take it when free." : "Order sent to the window."
+      );
+    } else {
+      const map: Record<NonNullable<typeof r.reason>, string> = {
+        inactive:
+          "Burger service off — place the joint markers in layout, relaunch sim.",
+        too_far: "Walk to the burger order marker (see layout).",
+        no_cash: "Not enough money for a classic burger.",
+        no_human: "No player entity in sim.",
+      };
+      setOrderHint(map[r.reason] ?? "Can't order right now.");
+    }
+    bump();
   };
 
   return (
@@ -72,10 +93,45 @@ export default function DialogueChatPanel() {
         </button>
       </div>
 
-      <p style={{ margin: "0 0 8px", fontSize: 10, color: "#9ca3af" }}>
+      <p style={{ margin: "0 0 6px", fontSize: 10, color: "#9ca3af" }}>
         Walk near NPCs in simulation — they talk when the sim triggers a chat. Your lines
         below are local practice (not sent to the LLM yet).
       </p>
+      {manager.simulationEnabled && manager.getHuman() ? (
+        <div
+          style={{
+            marginBottom: 8,
+            padding: "6px 8px",
+            borderRadius: 6,
+            background: "rgba(20,30,12,0.5)",
+            border: "1px solid rgba(120,180,80,0.2)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span style={{ fontSize: 10, color: "#a3e635" }}>
+              Cash: ${manager.getHuman()!.money.toFixed(0)}
+            </span>
+            <button
+              type="button"
+              onClick={tryBurgerOrder}
+              style={btnBurger}
+              title="Place order at the burger order marker (stand in range)"
+            >
+              Order classic burger
+            </button>
+          </div>
+          {orderHint ? (
+            <div style={{ fontSize: 9, color: "#c6d4a8", marginTop: 4 }}>{orderHint}</div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div
         ref={scrollRef}
@@ -138,6 +194,17 @@ export default function DialogueChatPanel() {
     </div>
   );
 }
+
+const btnBurger: CSSProperties = {
+  fontSize: 10,
+  padding: "4px 8px",
+  borderRadius: 6,
+  border: "1px solid rgba(163,230,53,0.45)",
+  background: "rgba(60,80,20,0.5)",
+  color: "#ecfccb",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
 
 const btnSmall: CSSProperties = {
   fontSize: 10,

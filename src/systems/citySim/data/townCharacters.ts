@@ -1,5 +1,5 @@
 import type { CharacterGender, Mood, TownEntity } from "../types";
-import { ENTITY_Y } from "../constants";
+import { DEFAULT_NPC_STARTING_MONEY, DEFAULT_PLAYER_STARTING_MONEY, ENTITY_Y } from "../constants";
 import { DEFAULT_NPC_TTS_VOICE } from "../speech/edgeTtsVoiceCatalog";
 import { getInitialTtsVoiceId } from "../ttsVoiceStorage";
 
@@ -79,6 +79,92 @@ export const CHARACTER_SEEDS: CharacterSeed[] = [
       "Freelance odd-jobber",
     ],
   },
+  {
+    id: "npc_maya",
+    displayName: "Maya",
+    gender: "female",
+    role: "Line cook",
+    mood: "friendly",
+    traits: ["fast", "focused", "early-shift"],
+    homeMarkerKey: "home_maya",
+    defaultTtsVoice: "en-US-JennyNeural",
+    townRoleOptions: [
+      "Line cook",
+      "Grill lead",
+      "Burger window",
+    ],
+  },
+  {
+    id: "npc_river",
+    displayName: "River",
+    gender: "nonbinary",
+    role: "Shift lead",
+    mood: "calm",
+    traits: ["measured", "de-escalator", "planner"],
+    homeMarkerKey: "home_river",
+    defaultTtsVoice: "en-US-BrandonNeural",
+    townRoleOptions: [
+      "Shift lead",
+      "Floor minder",
+      "Closes the loop on chaos",
+    ],
+  },
+  {
+    id: "npc_tina",
+    displayName: "Tina",
+    gender: "female",
+    role: "Nurse on days off",
+    mood: "calm",
+    traits: ["warm", "quiet humor"],
+    homeMarkerKey: "home_tina",
+    defaultTtsVoice: "en-US-ElizabethNeural",
+    townRoleOptions: [
+      "Neighbor",
+      "Night shifter on pause",
+    ],
+  },
+  {
+    id: "npc_omar",
+    displayName: "Omar",
+    gender: "male",
+    role: "Electrician",
+    mood: "friendly",
+    traits: ["jokes on purpose", "early riser"],
+    homeMarkerKey: "home_omar",
+    defaultTtsVoice: "en-US-RogerNeural",
+    townRoleOptions: [
+      "Contractor in town",
+      "Weekend tinkerer",
+    ],
+  },
+  {
+    id: "npc_mina",
+    displayName: "Mina",
+    gender: "female",
+    role: "Librarian",
+    mood: "nervous",
+    traits: ["bookish", "apologetic"],
+    homeMarkerKey: "home_mina",
+    defaultTtsVoice: "en-US-EmmaNeural",
+    townRoleOptions: [
+      "Librarian",
+      "Stashes novels",
+    ],
+  },
+  {
+    id: "npc_chris",
+    displayName: "Chris",
+    gender: "male",
+    role: "Cyclist",
+    mood: "annoyed",
+    traits: ["wiry", "honest", "caffeine"],
+    homeMarkerKey: "home_chris",
+    defaultTtsVoice: "en-US-ChristopherNeural",
+    townRoleOptions: [
+      "Courier habits",
+      "Goes everywhere by bike",
+    ],
+  },
 ];
 
 export const HUMAN_ENTITY_ID = "resident_player";
@@ -105,7 +191,7 @@ export function createEntityFromSeed(
     traits: [...seed.traits],
     relationships: {},
     memoryIds: [],
-    conversation: null,
+    inConversation: false,
     controllerType: "ai",
     nextDecisionAt: 0,
     conversationCooldownUntil: 0,
@@ -127,6 +213,9 @@ export function createEntityFromSeed(
     lifeAdaptation: 0.06,
     townDaysLived: 0,
     lastSimDayKey: null,
+    money:
+      DEFAULT_NPC_STARTING_MONEY + Math.floor(Math.random() * 40),
+    serviceMovementLock: false,
   };
 }
 
@@ -152,7 +241,7 @@ export function createHumanEntity(
     traits: ["practical", "quiet"],
     relationships: {},
     memoryIds: [],
-    conversation: null,
+    inConversation: false,
     controllerType: "human",
     nextDecisionAt: Number.POSITIVE_INFINITY,
     conversationCooldownUntil: 0,
@@ -168,5 +257,7 @@ export function createHumanEntity(
     lifeAdaptation: 0.05,
     townDaysLived: 0,
     lastSimDayKey: null,
+    money: DEFAULT_PLAYER_STARTING_MONEY,
+    serviceMovementLock: false,
   };
 }
