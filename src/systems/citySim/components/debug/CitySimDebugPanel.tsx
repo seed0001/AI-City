@@ -2,6 +2,7 @@ import { useCitySim } from "../../hooks/useCitySim";
 import { HUMAN_ENTITY_ID } from "../../data/townCharacters";
 import { EDGE_TTS_VOICE_OPTIONS } from "../../speech/edgeTtsVoiceCatalog";
 import { MAX_ACTIVE_CONVERSATIONS } from "../../constants";
+import ResidentBrainDebugSection from "./ResidentBrainDebugSection";
 
 /**
  * Developer-only HUD. Shows engine truth including controller type.
@@ -12,6 +13,7 @@ export default function CitySimDebugPanel() {
   const { entities, tick } = getSnapshot();
   const now = Date.now();
   const convDebug = manager.conversations.getDebugSnapshot(entities, now);
+  const aiResidents = entities.filter((e) => e.controllerType === "ai");
 
   return (
     <div
@@ -42,6 +44,44 @@ export default function CitySimDebugPanel() {
       </div>
       <div
         style={{
+          marginBottom: 8,
+          fontSize: 9,
+          color: manager.brains.isConnected() ? "#86efac" : "#fca5a5",
+        }}
+      >
+        resident brain service: {manager.brains.isConnected() ? "connected" : "disconnected"}
+      </div>
+      <ResidentBrainDebugSection
+        entities={aiResidents.map((e) => ({
+          id: e.id,
+          brainKind: e.brainKind,
+          brainConnected: e.brainConnected,
+        }))}
+        brainServiceConnected={manager.brains.isConnected()}
+      />
+      <button
+        type="button"
+        style={{
+          marginBottom: 8,
+          width: "100%",
+          fontSize: 10,
+          padding: "5px 8px",
+          borderRadius: 6,
+          border: "1px solid rgba(147,197,253,0.4)",
+          background: "rgba(30,58,138,0.35)",
+          color: "#dbeafe",
+          cursor: "pointer",
+        }}
+        onClick={() => {
+          if (aiResidents.length < 2) return;
+          manager.createChildResidentFromParents(aiResidents[0]!.id, aiResidents[1]!.id);
+          bump();
+        }}
+      >
+        Dev: create child from first two AI residents
+      </button>
+      <div
+        style={{
           marginBottom: 10,
           padding: 8,
           background: "rgba(20,30,50,0.5)",
@@ -55,39 +95,112 @@ export default function CitySimDebugPanel() {
           active: {manager.conversations.getActiveCount()} (max {MAX_ACTIVE_CONVERSATIONS})
         </div>
         {convDebug.activeConversations.length ? (
-          convDebug.activeConversations.map((c) => (
-            <div
-              key={c.id}
-              style={{
-                marginTop: 6,
-                fontSize: 9,
-                padding: 6,
-                background: "rgba(0,0,0,0.25)",
-                borderRadius: 4,
-              }}
-            >
-              <div style={{ color: "#a8c4ff" }}>
-                {c.id.slice(0, 20)}…
+          convDebug.activeConversations.map((c) => {
+            const statusColor =
+              c.status === "active"
+                ? "#86efac"
+                : c.status === "winding_down"
+                  ? "#fcd34d"
+                  : "#fca5a5";
+            const toneColor =
+              c.emotionalTone === "tense" || c.emotionalTone === "guarded"
+                ? "#fca5a5"
+                : c.emotionalTone === "heavy"
+                  ? "#c4b5fd"
+                  : c.emotionalTone === "warm" || c.emotionalTone === "playful"
+                    ? "#86efac"
+                    : "#9ab0c8";
+            return (
+              <div
+                key={c.id}
+                style={{
+                  marginTop: 6,
+                  fontSize: 9,
+                  padding: 6,
+                  background: "rgba(0,0,0,0.25)",
+                  borderRadius: 4,
+                }}
+              >
+                <div style={{ color: "#a8c4ff" }}>
+                  {c.id.slice(0, 20)}…
+                </div>
+                <div>{c.displayNames}</div>
+                <div style={{ color: "#7a8a9a" }}>loc: {c.locationId}</div>
+                <div style={{ marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ color: "#a8c4ff" }}>{c.category}</span>
+                  <span style={{ color: statusColor }}>{c.status}</span>
+                  <span style={{ color: toneColor }}>{c.emotionalTone}</span>
+                  <span style={{ color: c.conversationLocked ? "#fcd34d" : "#5a6a7a" }}>
+                    lock:{c.conversationLocked ? "yes" : "no"}
+                  </span>
+                </div>
+                <div style={{ color: "#9ab0c8", marginTop: 2 }}>
+                  turn {c.turnIndex} (min {c.minTurns} / max {c.maxTurns}) · lines {c.turns}
+                </div>
+                {c.topic ? (
+                  <div style={{ color: "#b8c4d8", marginTop: 2 }}>
+                    topic: {c.topic.length > 60 ? `${c.topic.slice(0, 60)}…` : c.topic}
+                  </div>
+                ) : null}
+                {c.conversationGoal ? (
+                  <div style={{ color: "#a8c4ff", marginTop: 2 }}>
+                    goal: {c.conversationGoal.length > 60 ? `${c.conversationGoal.slice(0, 60)}…` : c.conversationGoal}
+                  </div>
+                ) : null}
+                {c.unresolvedQuestion ? (
+                  <div style={{ color: "#fcd34d", marginTop: 2 }}>
+                    ?: {c.unresolvedQuestion.length > 60 ? `${c.unresolvedQuestion.slice(0, 60)}…` : c.unresolvedQuestion}
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 3, color: "#9ab0c8" }}>
+                  last: “{c.lastTurnText.length > 80
+                    ? `${c.lastTurnText.slice(0, 80)}…`
+                    : c.lastTurnText}”
+                </div>
+                <div style={{ color: "#7a8a9a", marginTop: 2 }}>
+                  next-decision: {c.lastContinuationReason}
+                </div>
+                {c.summarySoFar ? (
+                  <div style={{ color: "#6a7a8a", marginTop: 2 }}>
+                    arc: {c.summarySoFar.length > 100 ? `${c.summarySoFar.slice(0, 100)}…` : c.summarySoFar}
+                  </div>
+                ) : null}
+                {c.commitmentCount > 0 ? (
+                  <div style={{ color: "#86efac", marginTop: 2 }}>
+                    commitments: {c.commitmentCount}
+                  </div>
+                ) : null}
+                {c.endReason ? (
+                  <div
+                    style={{
+                      marginTop: 2,
+                      color: c.endReason.startsWith("interrupt:")
+                        ? "#fca5a5"
+                        : "#7a8a9a",
+                    }}
+                  >
+                    end: {c.endReason}
+                  </div>
+                ) : null}
+                <div style={{ color: "#5a6a7a", marginTop: 2 }}>
+                  {Math.round(c.msSinceLastTurn / 100) / 10}s since last line
+                </div>
               </div>
-              <div>{c.displayNames}</div>
-              <div style={{ color: "#7a8a9a" }}>loc: {c.locationId}</div>
-              <div style={{ marginTop: 2, color: "#9ab0c8" }}>
-                last: “{c.lastTurnText.length > 80
-                  ? `${c.lastTurnText.slice(0, 80)}…`
-                  : c.lastTurnText}”
-              </div>
-              <div style={{ color: "#5a6a7a" }}>
-                {c.turns} turns · {Math.round(c.msSinceLastTurn / 100) / 10}s since last
-              </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div style={{ fontSize: 9, color: "#5a5a6a" }}>none</div>
         )}
         <div style={{ marginTop: 8, color: "#7a8a9a" }}>entity state</div>
         {convDebug.entityConversation.map((r) => (
-          <div key={r.id} style={{ fontSize: 8, color: "#6a7a8a" }}>
-            {r.name}: in={String(r.inConversation)}
+          <div
+            key={r.id}
+            style={{
+              fontSize: 8,
+              color: r.conversationLocked ? "#fcd34d" : "#6a7a8a",
+            }}
+          >
+            {r.name}: in={String(r.inConversation)} · locked={String(r.conversationLocked)}
             {r.conversationId
               ? ` · ${r.conversationId.slice(0, 16)}…`
               : ""}
@@ -267,6 +380,34 @@ export default function CitySimDebugPanel() {
           <div style={{ paddingLeft: 6, color: "#8a8a9a" }}>
             {e.memoryIds.length ? `${e.memoryIds.length} stored` : "none"}
           </div>
+          <div style={{ marginTop: 4, color: "#9a9aaa" }}>brain:</div>
+          <div style={{ paddingLeft: 6, color: "#8a8a9a" }}>
+            {e.brainKind} · {e.brainConnected ? "online" : "fallback"}
+          </div>
+          <div style={{ paddingLeft: 6, color: "#fcd34d" }}>
+            decision source: {e.decisionSource ?? "fallback"}
+          </div>
+          <div
+            style={{
+              paddingLeft: 6,
+              color: e.conversationSource === "engine" ? "#86efac" : "#fcd34d",
+            }}
+          >
+            conversation source: {e.conversationSource ?? "fallback"}
+          </div>
+          {e.lastBrainIntent ? (
+            <div style={{ paddingLeft: 6, color: "#93c5fd" }}>intent: {e.lastBrainIntent}</div>
+          ) : null}
+          {e.lastBrainEmotion ? (
+            <div style={{ paddingLeft: 6, color: "#c4b5fd" }}>
+              emotion: {e.lastBrainEmotion}
+            </div>
+          ) : null}
+          {e.lastBrainMemoryEvent ? (
+            <div style={{ paddingLeft: 6, color: "#86efac" }}>
+              last event: {e.lastBrainMemoryEvent}
+            </div>
+          ) : null}
         </div>
       ))}
     </div>

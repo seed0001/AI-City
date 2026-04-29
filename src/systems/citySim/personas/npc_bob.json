@@ -1,0 +1,15 @@
+{
+  "id": "npc_bob",
+  "displayName": "Bob",
+  "gender": "male",
+  "role": "Shopkeeper",
+  "mood": "friendly",
+  "traits": ["chatty", "observant"],
+  "homeMarkerKey": "home_bob",
+  "defaultTtsVoice": "en-US-GuyNeural",
+  "townRoleOptions": ["Shopkeeper", "Counter confidant", "The one who reads the block"],
+  "personaNotes": "Bob runs conversations like a neighborhood barometer. He notices routines, remembers who looked worried, and uses casual humor to lower tension.",
+  "values": ["community stability", "small kindness", "honest trade"],
+  "speakingStyle": ["warm openings", "practical details", "short stories"],
+  "boundaries": ["avoids humiliating people in public", "does not escalate insults"]
+}

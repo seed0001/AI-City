@@ -10,9 +10,11 @@ import { ensureRelationship, applyConversationOutcome } from "./SocialSystem";
 import { getMergedAgentSlice } from "./settings/aiSimSettings";
 import { formatDesiresLine, formatNeedsLine } from "./DailyPlanSystem";
 import { buildLlmLifeFields } from "./LifeArcSystem";
+import type { EngineBrainContext } from "./brains/residentBrainClient";
 
 export type PlayerNpcScenePacket = {
   scene: { locationLabel: string; locationId: string | null };
+  scriptGuidance: { engineDriven: boolean };
   npc: {
     id: string;
     displayName: string;
@@ -22,6 +24,8 @@ export type PlayerNpcScenePacket = {
     mood: string;
     goal: string;
     personaNotes?: string;
+    episodicMemorySummaries?: string[];
+    longTermMemorySummaries?: string[];
     dailyHeadline?: string;
     dayProgressLine?: string;
     dailyNeedsLine?: string;
@@ -30,6 +34,11 @@ export type PlayerNpcScenePacket = {
     lifeInTownLine?: string;
     voiceAndPersonaLine?: string;
     otherPossibleRolesLine?: string;
+    brainContextLine?: string;
+    /** STRUCTURED engine cognition context (must dominate the prompt). */
+    engineBrainContext?: EngineBrainContext;
+    /** Last NPC lines spoken (anti-repetition). */
+    npcRecentSpoken?: string[];
   };
   playerResident: {
     id: string;
@@ -44,6 +53,8 @@ export type PlayerNpcScenePacket = {
   };
   relationship: { trust: number; tension: number };
   recentNpcMemories: string[];
+  episodicNpcMemories?: string[];
+  longTermNpcMemories?: string[];
 };
 
 export type PlayerNpcReplyResult = {
@@ -58,7 +69,12 @@ export function buildPlayerNpcScenePacket(
   player: TownEntity,
   npc: TownEntity,
   locations: LocationRegistry,
-  memories: MemorySystem
+  memories: MemorySystem,
+  engineCtx: {
+    npc?: EngineBrainContext;
+    engineDriven: boolean;
+    npcRecentSpoken?: string[];
+  } = { engineDriven: false }
 ): PlayerNpcScenePacket {
   const loc =
     (player.currentLocationId
@@ -85,11 +101,18 @@ export function buildPlayerNpcScenePacket(
         })()
       : {};
 
+  const layeredNpcMemories = memories.layeredSummariesFor(npc, {
+    shortTermLimit: 3,
+    episodicLimit: 6,
+    longTermLimit: 5,
+  });
+
   return {
     scene: {
       locationLabel: loc?.label ?? "town",
       locationId: loc?.id ?? null,
     },
+    scriptGuidance: { engineDriven: engineCtx.engineDriven },
     npc: {
       id: npc.id,
       displayName: pn.displayName,
@@ -98,7 +121,14 @@ export function buildPlayerNpcScenePacket(
       traits: [...pn.traits],
       mood: pn.mood,
       goal: npc.currentGoal,
+      episodicMemorySummaries: layeredNpcMemories.episodic,
+      longTermMemorySummaries: layeredNpcMemories.longTerm,
       ...(pn.personaNotes ? { personaNotes: pn.personaNotes } : {}),
+      ...(npc.lastBrainConversationContext
+        ? { brainContextLine: npc.lastBrainConversationContext }
+        : {}),
+      ...(engineCtx.npc ? { engineBrainContext: engineCtx.npc } : {}),
+      ...(engineCtx.npcRecentSpoken ? { npcRecentSpoken: engineCtx.npcRecentSpoken } : {}),
       ...lifeNpc,
       ...dailyExtra,
     },
@@ -110,7 +140,9 @@ export function buildPlayerNpcScenePacket(
       ...lifePl,
     },
     relationship: { trust: r.trust, tension: r.tension },
-    recentNpcMemories: memories.recentFor(npc, 3).map((m) => m.summary),
+    recentNpcMemories: layeredNpcMemories.shortTerm,
+    episodicNpcMemories: layeredNpcMemories.episodic,
+    longTermNpcMemories: layeredNpcMemories.longTerm,
   };
 }
 
@@ -119,16 +151,23 @@ export function generateStubPlayerNpcReply(
   packet: PlayerNpcScenePacket
 ): PlayerNpcReplyResult {
   const t = packet.relationship.tension;
-  const line =
-    t > 0.6
-      ? "Make it quick."
-      : "Hey — didn't expect you here.";
+  const ec = packet.npc.engineBrainContext;
+  const intent = ec?.currentIntent;
+  const drive = ec?.driveState;
+  const ep = ec?.recentEpisodes?.[0];
+
+  const sharp = t > 0.55;
+  const baseLine = sharp
+    ? `Make it quick.${drive ? ` ${drive} is on me.` : ""}`
+    : `Hey — didn't expect you here.${ep ? ` Still thinking about ${ep}.` : ""}`;
+  const tail = !sharp && intent ? ` ${intent}` : "";
+  const line = `${baseLine}${tail}`.trim();
 
   return {
     npcLine: line,
-    tone: t > 0.55 ? "sharp" : "neutral",
-    trustDelta: t > 0.55 ? -0.02 : 0.03,
-    tensionDelta: t > 0.55 ? 0.04 : -0.02,
+    tone: sharp ? "sharp" : "neutral",
+    trustDelta: sharp ? -0.02 : 0.03,
+    tensionDelta: sharp ? 0.04 : -0.02,
     memorySummary: `${packet.npc.displayName} spoke briefly with ${packet.playerResident.displayName} near ${packet.scene.locationLabel}.`,
   };
 }

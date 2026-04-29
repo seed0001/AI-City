@@ -10,6 +10,15 @@ import {
   dailyObjectivePull,
   pickDailyPursuitLocation,
 } from "./DailyPlanSystem";
+import type { BrainDecision } from "./brains/residentBrainClient";
+import { residentBrainAdapter } from "./brains/ResidentBrainAdapter";
+
+type BrainSuggestion = {
+  intent: BrainDecision;
+  confidence: number;
+  targetEntityId?: string | null;
+  rationale?: string;
+} | null;
 
 export function scheduleNextDecision(entity: TownEntity, now: number): void {
   const span = DECISION_INTERVAL_MAX_MS - DECISION_INTERVAL_MIN_MS;
@@ -30,12 +39,133 @@ export function runAiDecision(
   if (now < entity.nextDecisionAt) return;
 
   const others = allEntities.filter((e) => e.id !== entity.id);
+  const exclude = entity.currentLocationId ?? undefined;
+
+  // Engine-driven primary path.
+  const suggestion: BrainSuggestion = residentBrainAdapter.getDecision(
+    entity,
+    others.map((o) => o.id)
+  );
+  if (suggestion && suggestion.confidence >= 0.25) {
+    switch (suggestion.intent) {
+      case "go_home": {
+        const home = entity.homeMarkerKey ? locations.get(entity.homeMarkerKey) : undefined;
+        if (home) {
+          entity.currentGoal = "Rest at home";
+          startWalkTo(entity, { ...home.position }, home.id);
+          entity.decisionSource = "engine";
+          scheduleNextDecision(entity, now);
+          return;
+        }
+        break;
+      }
+      case "seek_food": {
+        const store = locations.randomByKinds(["store"], exclude);
+        if (store) {
+          entity.currentGoal = `Go to ${store.label}`;
+          startWalkTo(entity, { ...store.position }, store.id);
+          entity.decisionSource = "engine";
+          scheduleNextDecision(entity, now);
+          return;
+        }
+        break;
+      }
+      case "start_conversation": {
+        const preferred = suggestion.targetEntityId
+          ? others.find((x) => x.id === suggestion.targetEntityId)
+          : null;
+        const nearest =
+          preferred ??
+          others
+            .map((o) => ({ e: o, d: distance2D(entity.position, o.position) }))
+            .sort((a, b) => a.d - b.d)[0]?.e;
+        if (nearest) {
+          const d = distance2D(entity.position, nearest.position);
+          if (d > 2.8) {
+            entity.currentGoal = `Approach ${nearest.displayName}`;
+            startWalkTo(entity, { ...nearest.position }, nearest.currentLocationId);
+          } else {
+            entity.currentAction = "idle";
+            entity.currentGoal = `Talk with ${nearest.displayName}`;
+          }
+          entity.decisionSource = "engine";
+          scheduleNextDecision(entity, now);
+          return;
+        }
+        break;
+      }
+      case "seek_social": {
+        const social = locations.randomByKinds(["park", "social"], exclude);
+        if (social) {
+          entity.currentGoal = `Meet people at ${social.label}`;
+          startWalkTo(entity, { ...social.position }, social.id);
+          entity.decisionSource = "engine";
+          scheduleNextDecision(entity, now);
+          return;
+        }
+        break;
+      }
+      case "avoid_entity": {
+        const target = suggestion.targetEntityId
+          ? allEntities.find((x) => x.id === suggestion.targetEntityId)
+          : null;
+        if (target) {
+          entity.avoidingEntityId = target.id;
+          const far = locations
+            .all()
+            .sort(
+              (a, b) =>
+                distance2D(entity.position, b.position) -
+                distance2D(entity.position, a.position)
+            )[0];
+          if (far) {
+            entity.currentGoal = "Get some space";
+            startWalkTo(entity, { ...far.position }, far.id);
+            entity.decisionSource = "engine";
+            scheduleNextDecision(entity, now);
+            return;
+          }
+        }
+        break;
+      }
+      case "pursue_daily_objective": {
+        const pursuit = pickDailyPursuitLocation(entity, locations, exclude);
+        if (pursuit) {
+          entity.currentGoal =
+            entity.dailyPlan?.objectives.find((o) => !o.completed)?.summary ??
+            pursuit.label;
+          startWalkTo(entity, { ...pursuit.position }, pursuit.id);
+          entity.decisionSource = "engine";
+          scheduleNextDecision(entity, now);
+          return;
+        }
+        break;
+      }
+      case "reflect":
+      case "idle":
+        entity.currentAction = "idle";
+        entity.currentGoal = suggestion.rationale?.slice(0, 64) || "Reflect quietly";
+        entity.decisionSource = "engine";
+        scheduleNextDecision(entity, now);
+        return;
+      case "wander":
+      default: {
+        const dest = locations.randomDestination(exclude);
+        entity.currentGoal = `Wander toward ${dest.label}`;
+        startWalkTo(entity, { ...dest.position }, dest.id);
+        entity.decisionSource = "engine";
+        scheduleNextDecision(entity, now);
+        return;
+      }
+    }
+  }
+
+  entity.decisionSource = "fallback";
   const threat = others.find(
     (o) =>
       entity.avoidingEntityId === o.id &&
       distance2D(entity.position, o.position) < 8
   );
-
   if (threat && Math.random() < 0.7) {
     const far = locations
       .all()
@@ -52,8 +182,6 @@ export function runAiDecision(
       return;
     }
   }
-
-  const exclude = entity.currentLocationId ?? undefined;
 
   // Tired -> home (marker registry)
   if (entity.energy < 0.28 && entity.homeMarkerKey) {

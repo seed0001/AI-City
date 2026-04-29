@@ -7,3 +7,23 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# TS incremental build caches
+*.tsbuildinfo
+
+# Local / dev artifacts (runtime chat logs — do not publish)
+/memories/
+
+# Cognition library (separate repo). Clone into project root:
+#   git clone https://github.com/tbollenbach/AgentOne.git Engines
+# Or set ENGINES_ROOT to a sibling checkout (see ENGINE_INTEGRATION_README.md).
+Engines/
+
+# Resident brain runtime data (persisted bundles per machine)
+server/residentBrain/state/
+server/residentBrain/memories/
+server/residentBrain/diary/

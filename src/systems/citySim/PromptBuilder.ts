@@ -32,7 +32,12 @@ export function buildWorldContext(
   );
 
   const nearest = getNearestLocation(self, locations);
-  const recent = memories.recentFor(self, 4).map((m) => m.summary);
+  const layered = memories.layeredSummariesFor(self, {
+    shortTermLimit: 4,
+    episodicLimit: 6,
+    longTermLimit: 6,
+  });
+  const recent = layered.shortTerm;
 
   let relationshipWithFocus: WorldContextPacket["relationshipWithFocus"] =
     null;
@@ -80,12 +85,18 @@ export function buildWorldContext(
             dailyDesiresLine: formatDesiresLine(plan),
           }
         : {}),
+      ...(self.lastBrainConversationContext
+        ? { brainStateLine: self.lastBrainConversationContext }
+        : {}),
     },
     place: {
       locationId: nearest?.id ?? self.currentLocationId,
       label: nearest?.label ?? "Unknown area",
     },
     nearbyPeople: nearby,
+    shortTermMemories: layered.shortTerm,
+    episodicMemories: layered.episodic,
+    longTermMemories: layered.longTerm,
     memorySummaries: recent,
     relationshipWithFocus,
     lastUtteranceInConversation: lastUtterance,

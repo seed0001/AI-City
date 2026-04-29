@@ -6,8 +6,9 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
+    "types": ["node"],
     "strict": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts", "vite-plugin-edge-tts.ts"]
+  "include": ["vite.config.ts", "vite-plugin-edge-tts.ts", "vite-plugin-lan-hub.ts"]
 }

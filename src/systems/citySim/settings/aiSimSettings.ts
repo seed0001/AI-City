@@ -1,4 +1,5 @@
 import type { Mood, TownEntity } from "../types";
+import { getPersonaNotesForEntity } from "../personas/personaRegistry";
 
 const STORAGE_KEY = "ai-city-sim-settings";
 const CURRENT_VERSION = 1 as const;
@@ -189,7 +190,7 @@ export function getMergedAgentSlice(entity: TownEntity) {
     role: o?.role?.trim() || entity.role,
     mood: parseMood(o?.mood, entity.mood),
     traits: parseTraits(o?.traits, entity.traits),
-    personaNotes: o?.personaNotes?.trim() || undefined,
+    personaNotes: o?.personaNotes?.trim() || getPersonaNotesForEntity(entity.id),
     gender: entity.gender,
   };
 }

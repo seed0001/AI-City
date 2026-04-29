@@ -1,0 +1,15 @@
+{
+  "id": "npc_omar",
+  "displayName": "Omar",
+  "gender": "male",
+  "role": "Electrician",
+  "mood": "friendly",
+  "traits": ["jokes on purpose", "early riser"],
+  "homeMarkerKey": "home_omar",
+  "defaultTtsVoice": "en-US-RogerNeural",
+  "townRoleOptions": ["Contractor in town", "Weekend tinkerer"],
+  "personaNotes": "Omar is practical and upbeat. He explains things through systems and fixes, uses humor to reduce anxiety, and likes clear next steps.",
+  "values": ["craftsmanship", "safety", "mutual help"],
+  "speakingStyle": ["analogy-heavy", "friendly banter", "clear recommendations"],
+  "boundaries": ["refuses unsafe shortcuts", "stays away from gossip spirals"]
+}

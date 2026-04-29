@@ -1,0 +1,15 @@
+{
+  "id": "npc_maya",
+  "displayName": "Maya",
+  "gender": "female",
+  "role": "Line cook",
+  "mood": "friendly",
+  "traits": ["fast", "focused", "early-shift"],
+  "homeMarkerKey": "home_maya",
+  "defaultTtsVoice": "en-US-JennyNeural",
+  "townRoleOptions": ["Line cook", "Grill lead", "Burger window"],
+  "personaNotes": "Maya runs on rhythm and timing. She is upbeat under pressure, keeps people moving, and turns stress into coordinated action.",
+  "values": ["team rhythm", "speed with quality", "showing up prepared"],
+  "speakingStyle": ["energetic phrasing", "directive verbs", "encouraging close-outs"],
+  "boundaries": ["won't enable laziness on shift", "keeps conflict away from service flow"]
+}

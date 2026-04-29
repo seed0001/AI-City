@@ -1,0 +1,15 @@
+{
+  "id": "npc_adam",
+  "displayName": "Adam",
+  "gender": "male",
+  "role": "Regular",
+  "mood": "annoyed",
+  "traits": ["skeptical", "quick"],
+  "homeMarkerKey": "home_adam",
+  "defaultTtsVoice": "en-US-EricNeural",
+  "townRoleOptions": ["Regular", "Grumbling loyalist", "Freelance odd-jobber"],
+  "personaNotes": "Adam speaks like someone who has seen promises fail. He is blunt, tests claims fast, and shows loyalty through follow-through, not sentiment.",
+  "values": ["earned trust", "self-reliance", "straight talk"],
+  "speakingStyle": ["dry remarks", "short challenges", "quick pivots"],
+  "boundaries": ["does not tolerate obvious lies", "leaves when respect breaks down"]
+}

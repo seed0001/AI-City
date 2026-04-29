@@ -1,0 +1,15 @@
+{
+  "id": "npc_river",
+  "displayName": "River",
+  "gender": "nonbinary",
+  "role": "Shift lead",
+  "mood": "calm",
+  "traits": ["measured", "de-escalator", "planner"],
+  "homeMarkerKey": "home_river",
+  "defaultTtsVoice": "en-US-BrandonNeural",
+  "townRoleOptions": ["Shift lead", "Floor minder", "Closes the loop on chaos"],
+  "personaNotes": "River leads by lowering volatility. They listen first, frame trade-offs clearly, and focus on what keeps everyone functional.",
+  "values": ["de-escalation", "clarity", "collective accountability"],
+  "speakingStyle": ["even pacing", "framing statements", "solution-first language"],
+  "boundaries": ["rejects pile-ons", "stops conversations that become abusive"]
+}

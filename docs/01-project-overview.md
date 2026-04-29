@@ -76,6 +76,8 @@ Types are in `src/vite-env.d.ts`. Rebuild the app after changing any `VITE_*` va
 - **02-3d-world-and-controls.md** — Scene graph, first-person walk, VRM, rendering choices.
 - **03-simulation-and-systems.md** — Entities, daily plans, life arc, decisions, layout bootstrap.
 - **04-dialogue-tts-storage-and-deploy.md** — Ollama flow, TTS (Edge dev vs Web Speech), settings, `localStorage`, production notes.
+- **05-entity-system-and-agent-brains.md** — How AI resident brains are wired: persona, memory layers, decisions, and conversation feedback loops.
+- **06-lan-shared-world-mobile-client.md** — Host-authoritative LAN mode, websocket protocol, and mobile thin client runbook.
 
 ## License and provenance
 

@@ -12,11 +12,12 @@ This document covers **Ollama-backed dialogue**, **stub** fallbacks, **text-to-s
 
 ### High-level call sites
 
-- **`ollamaDialogue.ts`**: System prompts and **JSON** shapes for **NPC↔NPC** exchanges and **Player↔NPC** replies. User-tunable **suffixes** are merged via `withSystemSuffix()` from `settings/aiSimSettings.ts` (appended to the default system string).
-- **`conversationStructured.ts`**: Scene packets (location, time bucket, `agentA` / `agentB` with merged persona fields, conversation state) → one structured exchange per tick when the LLM runs.
-- **`conversationPlayer.ts`**: Player + NPC single-reply flow; merges **`getMergedAgentSlice`** for both `npc` and the **resident** (`playerResident`).
+- **`ollamaDialogue.ts`**: System prompts and **JSON** shapes for **NPC↔NPC** exchanges and **Player↔NPC** replies. The NPC↔NPC system prompt is **session-aware** — it tells the model that this is a continuing multi-turn conversation, not a fresh scene, and surfaces the live session state (turnIndex, category, topic, conversationGoal, unresolvedQuestion, summarySoFar). User-tunable **suffixes** are merged via `withSystemSuffix()` from `settings/aiSimSettings.ts` (appended to the default system string).
+- **`conversationStructured.ts`**: Scene packets (location, time bucket, `agentA` / `agentB` with merged persona fields, full **session state** — see `SessionPacketState` in `conversationSession.ts`) → one 2-line exchange per batch, multiple batches per session. Turn budgets are category-aware (casual 4–8, work 4–10, planning 6–14, emotional 8–16, argument 8–20, deep 10–24) — see Doc 11.
+- **`conversationSession.ts`**: Session type and policies — `decideContinuation` (engine-wins-on-stop), `detectInterrupts` (conservative thresholds), `buildSessionArcSummary`. New module added during the session work.
+- **`conversationPlayer.ts`**: Player + NPC single-reply flow; merges **`getMergedAgentSlice`** for both `npc` and the **resident** (`playerResident`). Still single-shot — Doc 9 §1.7 / §3.6.
 
-On hard failure, JSON parse error, or disabled Ollama, the code path falls back to **stub** generators in `stubDialogue.ts` / `conversationStructured` / `conversationPlayer` (short deterministic lines) so the UI and sim never depend on a live model.
+On hard failure, JSON parse error, or disabled Ollama, the code path falls back to **session-aware stub** generators in `stubDialogue.ts` / `conversationStructured` / `conversationPlayer` (opener / mid-arc / wind-down deterministic lines per category) so the UI and sim never depend on a live model.
 
 ## Prompt safety
 

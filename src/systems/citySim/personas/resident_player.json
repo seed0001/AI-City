@@ -1,0 +1,15 @@
+{
+  "id": "resident_player",
+  "displayName": "Alex",
+  "gender": "male",
+  "role": "Resident",
+  "mood": "calm",
+  "traits": ["practical", "quiet"],
+  "homeMarkerKey": null,
+  "defaultTtsVoice": "en-US-AvaNeural",
+  "townRoleOptions": ["Resident", "Neighbor", "New regular"],
+  "personaNotes": "Alex is grounded and observant, learning the social map of the block through direct interaction.",
+  "values": ["reciprocity", "stability", "measured trust"],
+  "speakingStyle": ["clear statements", "low drama", "context-aware replies"],
+  "boundaries": ["avoids needless escalation", "does not seek control over others"]
+}

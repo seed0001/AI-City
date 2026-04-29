@@ -166,7 +166,7 @@ export interface TownEntity {
   /** NPCs treat the player as a normal resident, not as a human operator. */
   residentKind: ResidentKind;
   /** Who drives this entity in the engine (not exposed to LLM prompts). */
-  controlledBy: "ai" | "human";
+  controlledBy: "ai" | "human" | "network";
   /** False for all residents in-world (including the player avatar). */
   knownAsHuman: boolean;
   /** AI-only: regenerated per local calendar day */
@@ -194,6 +194,22 @@ export interface TownEntity {
    * or scripted flow owns movement.
    */
   serviceMovementLock: boolean;
+  /** Which cognition path currently drives this resident. */
+  brainKind: "local" | "engine";
+  /** Last known bridge connectivity for this resident brain. */
+  brainConnected: boolean;
+  /** Debug-only last intent suggested by engine bridge. */
+  lastBrainIntent?: string;
+  /** Debug-only compact emotion summary from engine bridge. */
+  lastBrainEmotion?: string;
+  /** Debug-only compact conversation context from engine bridge. */
+  lastBrainConversationContext?: string;
+  /** Debug-only last memory event summary sent to engine bridge. */
+  lastBrainMemoryEvent?: string;
+  /** Which decision path won this decision tick. */
+  decisionSource?: "engine" | "fallback";
+  /** Which path produced the most recent dialogue line for this resident. */
+  conversationSource?: "engine" | "fallback";
 }
 
 export interface DialogueTurn {
@@ -235,6 +251,8 @@ export interface WorldContextPacket {
     voiceAndPersonaLine?: string;
     /** Ways they could see themselves; current role is `role` above. */
     otherPossibleRolesLine?: string;
+    /** Optional in-world cognition summary line from engine bridge. */
+    brainStateLine?: string;
   };
   place: {
     locationId: string | null;
@@ -246,6 +264,13 @@ export interface WorldContextPacket {
     distance: number;
     apparentAction: CurrentAction;
   }>;
+  /** Working memory for immediate continuity. */
+  shortTermMemories?: string[];
+  /** Timestamped episode summaries from recent history. */
+  episodicMemories?: string[];
+  /** Distilled stable memories/facts reinforced over time. */
+  longTermMemories?: string[];
+  /** Backward-compatible aggregate memory list for existing consumers. */
   memorySummaries: string[];
   relationshipWithFocus: {
     otherDisplayName: string;
